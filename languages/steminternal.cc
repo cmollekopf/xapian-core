@@ -67,13 +67,9 @@
 
 using namespace std;
 
-namespace Xapian {
-
 #define CREATE_SIZE 16
 
-symbol *
-SnowballStemImplementation::create_s()
-{
+extern symbol * create_s() {
     void * mem = malloc(HEAD + (CREATE_SIZE + 1) * sizeof(symbol));
     if (mem == NULL) throw std::bad_alloc();
     symbol * p = reinterpret_cast<symbol*>(HEAD + static_cast<char *>(mem));
@@ -90,9 +86,7 @@ SnowballStemImplementation::create_s()
    -- used to implement hop and next in the utf8 case.
 */
 
-int
-SnowballStemImplementation::skip_utf8(const symbol * p, int c, int lb, int l, int n)
-{
+extern int skip_utf8(const symbol * p, int c, int lb, int l, int n) {
     if (n >= 0) {
 	for (; n > 0; --n) {
 	    if (c >= l) return -1;
@@ -122,9 +116,7 @@ SnowballStemImplementation::skip_utf8(const symbol * p, int c, int lb, int l, in
 /* Increase the size of the buffer pointed to by p to at least n symbols.
  * If insufficient memory, throw std::bad_alloc().
  */
-symbol *
-SnowballStemImplementation::increase_size(symbol * p, int n)
-{
+static symbol * increase_size(symbol * p, int n) {
     int new_size = n + 20;
     void * mem = realloc(reinterpret_cast<char *>(p) - HEAD,
 			 HEAD + (new_size + 1) * sizeof(symbol));
@@ -136,6 +128,7 @@ SnowballStemImplementation::increase_size(symbol * p, int n)
     return q;
 }
 
+namespace Xapian {
 
 StemImplementation::~StemImplementation() { }
 

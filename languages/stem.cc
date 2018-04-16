@@ -27,7 +27,6 @@
 
 #include "steminternal.h"
 
-#include "allsnowballheaders.h"
 #include "keyword.h"
 #include "sbl-dispatch.h"
 
