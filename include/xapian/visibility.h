@@ -27,6 +27,12 @@
 #if defined XAPIAN_ENABLE_VISIBILITY && defined __GNUC__ && (__GNUC__ >= 4)
 // GCC 3.4 has visibility support, but it's a bit buggy so we require 4.0.
 # define XAPIAN_VISIBILITY_DEFAULT __attribute__((visibility("default")))
+#elif defined XAPIAN_ENABLE_VISIBILITY && defined WIN32
+# if defined xapian_EXPORTS
+#  define XAPIAN_VISIBILITY_DEFAULT __declspec(dllexport)
+# else
+#  define XAPIAN_VISIBILITY_DEFAULT __declspec(dllimport)
+# endif
 #else
 # define XAPIAN_VISIBILITY_DEFAULT
 #endif

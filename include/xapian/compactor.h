@@ -31,7 +31,9 @@
 #include <xapian/deprecated.h>
 #include <xapian/intrusive_ptr.h>
 #include <xapian/visibility.h>
+#include <xapian/types.h>
 #include <string>
+#include <vector>
 
 namespace Xapian {
 
@@ -41,9 +43,6 @@ class Database;
  */
 class XAPIAN_VISIBILITY_DEFAULT Compactor {
   public:
-    /// Class containing the implementation.
-    class Internal;
-
     /** Compaction level. */
     typedef enum {
 	/** Don't split items unnecessarily. */
@@ -56,6 +55,61 @@ class XAPIAN_VISIBILITY_DEFAULT Compactor {
     } compaction_level;
 
   private:
+    	//class Internal;
+	class Internal : public Xapian::Internal::intrusive_base {
+	    friend class Compactor;
+
+	    std::string destdir_compat;
+	    size_t block_size;
+	    unsigned flags;
+
+	    std::vector<std::string> srcdirs_compat;
+
+	  public:
+	    Internal() : block_size(8192), flags(FULL) { }
+	};
+
+//      class Internal : public Xapian::Internal::RefCntBase {
+//        friend class Compactor;
+//
+//        std::string destdir;
+//        bool renumber;
+//        bool multipass;
+//        int compact_to_stub;
+//        size_t block_size;
+//        Compactor::compaction_level compaction;
+//
+//        Xapian::docid tot_off;
+//        Xapian::docid last_docid;
+//
+//        enum { UNKNOWN, BRASS, CHERT, FLINT } backend;
+//
+//#ifdef _WIN32
+//        struct _stat64 sb;
+//#else
+//        struct stat sb;
+//#endif
+//
+//        std::string first_source;
+//
+//        std::vector<std::string> sources;
+//        std::vector<Xapian::docid> offset;
+//        std::vector<std::pair<Xapian::docid, Xapian::docid> > used_ranges;
+//    public:
+//        Internal()
+//        : renumber(true), multipass(false),
+//        block_size(8192), compaction(FULL), tot_off(0),
+//        last_docid(0), backend(UNKNOWN)
+//        {
+//        }
+//
+//        void set_destdir(const std::string & destdir_);
+//
+//        void add_source(const std::string & srcdir);
+//
+//        void compact(Xapian::Compactor & compactor);
+//    };
+
     /// @internal Reference counted internals.
     Xapian::Internal::intrusive_ptr<Internal> internal;
 

@@ -80,19 +80,6 @@ class CmpByFirstUsed {
 
 namespace Xapian {
 
-class Compactor::Internal : public Xapian::Internal::intrusive_base {
-    friend class Compactor;
-
-    string destdir_compat;
-    size_t block_size;
-    unsigned flags;
-
-    vector<string> srcdirs_compat;
-
-  public:
-    Internal() : block_size(8192), flags(FULL) { }
-};
-
 Compactor::Compactor() : internal(new Compactor::Internal()) { }
 
 Compactor::~Compactor() { }

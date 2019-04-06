@@ -93,7 +93,8 @@ endswith(const std::string & s, const std::string & sfx)
 inline std::string::size_type
 common_prefix_length(const std::string &a, const std::string &b)
 {
-    std::string::size_type minlen = std::min(a.size(), b.size());
+    using namespace std;
+    std::string::size_type minlen = min(a.size(), b.size());
     std::string::size_type common;
     for (common = 0; common < minlen; ++common) {
 	if (a[common] != b[common]) break;

@@ -321,7 +321,7 @@ class XAPIAN_VISIBILITY_DEFAULT Weight {
      *  This would ideally be private, but that causes a compilation error
      *  with GCC 4.1 (which appears to be a bug).
      */
-    Weight(const Weight &);
+    Weight(const Weight &) = delete;
 
     /// The number of documents in the collection.
     Xapian::doccount get_collection_size() const { return collection_size_; }
