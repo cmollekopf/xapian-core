@@ -1,7 +1,7 @@
 /** @file glass_version.cc
  * @brief GlassVersion class
  */
-/* Copyright (C) 2006,2007,2008,2009,2010,2013,2014,2015,2016,2017 Olly Betts
+/* Copyright (C) 2006,2007,2008,2009,2010,2013,2014,2015,2016 Olly Betts
  * Copyright (C) 2011 Dan Colish
  *
  * This program is free software; you can redistribute it and/or modify
@@ -77,7 +77,7 @@ GlassVersion::GlassVersion(int fd_)
       oldest_changeset(0)
 {
     offset = lseek(fd, 0, SEEK_CUR);
-    if (rare(offset < 0)) {
+    if (rare(offset == off_t(-1))) {
 	string msg = "lseek failed on file descriptor ";
 	msg += str(fd);
 	throw Xapian::DatabaseOpeningError(msg, errno);
@@ -99,7 +99,7 @@ GlassVersion::read()
     FD close_fd(-1);
     int fd_in;
     if (single_file()) {
-	if (rare(lseek(fd, offset, SEEK_SET) < 0)) {
+	if (rare(lseek(fd, offset, SEEK_SET) == off_t(-1))) {
 	    string msg = "Failed to rewind file descriptor ";
 	    msg += str(fd);
 	    throw Xapian::DatabaseOpeningError(msg, errno);
@@ -234,7 +234,7 @@ GlassVersion::merge_stats(const GlassVersion & o)
 {
     doccount += o.get_doccount();
     if (doccount < o.get_doccount()) {
-	throw Xapian::DatabaseError("doccount overflowed!");
+	throw "doccount wrapped!";
     }
 
     Xapian::termcount o_doclen_lbound = o.get_doclength_lower_bound();
@@ -247,7 +247,7 @@ GlassVersion::merge_stats(const GlassVersion & o)
     wdf_ubound = max(wdf_ubound, o.get_wdf_upper_bound());
     total_doclen += o.get_total_doclen();
     if (total_doclen < o.get_total_doclen()) {
-	throw Xapian::DatabaseError("Total document length overflowed!");
+	throw "totlen wrapped!";
     }
 
     // The upper bounds might be on the same word, so we must sum them.

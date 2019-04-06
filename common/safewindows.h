@@ -38,4 +38,9 @@
 #define NOGDI
 #include <windows.h>
 
+// FOF_NOERRORUI isn't defined by older versions of the mingw headers.
+#ifndef FOF_NOERRORUI
+# define FOF_NOERRORUI 1024
+#endif
+
 #endif // XAPIAN_INCLUDED_SAFEWINDOWS_H

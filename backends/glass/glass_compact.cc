@@ -1,7 +1,7 @@
 /** @file glass_compact.cc
  * @brief Compact a glass database, or merge and compact several.
  */
-/* Copyright (C) 2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2017 Olly Betts
+/* Copyright (C) 2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015 Olly Betts
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -755,8 +755,7 @@ merge_docid_keyed(GlassTable *out, const vector<GlassTable*> & inputs,
 		key.resize(0);
 		pack_uint_preserving_sort(key, did);
 		if (d != e) {
-		    // Copy over anything extra in the key (e.g. the zero byte
-		    // at the end of "used value slots" in the termlist table).
+		    // Copy over the termname for the position table.
 		    key.append(d, e - d);
 		}
 	    } else {
@@ -785,7 +784,7 @@ GlassDatabase::compact(Xapian::Compactor * compactor,
 {
     struct table_list {
 	// The "base name" of the table.
-	char name[9];
+	const char * name;
 	// The type.
 	Glass::table_type type;
 	// Create tables after position lazily.
@@ -814,14 +813,16 @@ GlassDatabase::compact(Xapian::Compactor * compactor,
 	multipass = false;
     }
 
-    for (size_t i = 0; i != sources.size(); ++i) {
-	auto db = static_cast<const GlassDatabase*>(sources[i]);
-	if (db->has_uncommitted_changes()) {
-	    const char * m =
-		"Can't compact from a WritableDatabase with uncommitted "
-		"changes - either call commit() first, or create a new "
-		"Database object from the filename on disk";
-	    throw Xapian::InvalidOperationError(m);
+    if (single_file) {
+	for (size_t i = 0; i != sources.size(); ++i) {
+	    GlassDatabase * db = static_cast<GlassDatabase*>(sources[i]);
+	    if (db->has_uncommitted_changes()) {
+		const char * m =
+		    "Can't compact from a WritableDatabase with uncommitted "
+		    "changes - either call commit() first, or create a new "
+		    "Database object from the filename on disk";
+		throw Xapian::InvalidOperationError(m);
+	    }
 	}
     }
 
@@ -842,7 +843,7 @@ GlassDatabase::compact(Xapian::Compactor * compactor,
     AutoPtr<GlassVersion> version_file_out;
     if (single_file) {
 	if (destdir) {
-	    fd = open(destdir, O_RDWR|O_CREAT|O_TRUNC|O_BINARY|O_CLOEXEC, 0666);
+	    fd = open(destdir, O_RDWR|O_CREAT|O_BINARY|O_CLOEXEC, 0666);
 	    if (fd < 0) {
 		throw Xapian::DatabaseCreateError("open() failed", errno);
 	    }
@@ -1097,7 +1098,7 @@ GlassDatabase::compact(Xapian::Compactor * compactor,
     }
 
     if (single_file) {
-	if (lseek(fd, version_file_out->get_offset(), SEEK_SET) < 0) {
+	if (lseek(fd, version_file_out->get_offset(), SEEK_SET) == -1) {
 	    throw Xapian::DatabaseError("lseek() failed", errno);
 	}
     }

@@ -105,7 +105,7 @@ int
 main(int argc, char **argv)
 {
     const char * opts = "b:nFmqs";
-    static const struct option long_opts[] = {
+    const struct option long_opts[] = {
 	{"fuller",	no_argument, 0, 'F'},
 	{"no-full",	no_argument, 0, 'n'},
 	{"multipass",	no_argument, 0, 'm'},

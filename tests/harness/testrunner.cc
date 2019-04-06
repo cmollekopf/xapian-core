@@ -2,7 +2,7 @@
  * @brief Run multiple tests for different backends.
  */
 /* Copyright 2008,2009 Lemur Consulting Ltd
- * Copyright 2008,2009,2010,2011,2015,2017,2018 Olly Betts
+ * Copyright 2008,2009,2010,2011,2015 Olly Betts
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -68,27 +68,17 @@ TestRunner::set_properties_for_backend(const string & backend_name)
     static const BackendProperties backend_properties[] = {
 	{ "none", 0 },
 	{ "inmemory", INMEMORY|
-	    BACKEND|POSITIONAL|WRITABLE|METADATA|VALUESTATS|GENERATED },
+	    BACKEND|POSITIONAL|WRITABLE|METADATA|VALUESTATS },
 	{ "chert", CHERT|
 	    BACKEND|TRANSACTIONS|POSITIONAL|WRITABLE|SPELLING|METADATA|
-	    SYNONYMS|VALUESTATS|GENERATED|COMPACT
-#ifdef XAPIAN_HAS_REMOTE_BACKEND
-	    |REPLICAS
-#endif
-	},
+	    SYNONYMS|REPLICAS|VALUESTATS|GENERATED },
 	{ "glass", GLASS|
 	    BACKEND|TRANSACTIONS|POSITIONAL|WRITABLE|SPELLING|METADATA|
-	    SYNONYMS|VALUESTATS|GENERATED|COMPACT
-#ifdef XAPIAN_HAS_REMOTE_BACKEND
-	    |REPLICAS
-#endif
-	},
+	    SYNONYMS|REPLICAS|VALUESTATS|GENERATED },
 	{ "multi_chert", MULTI|
-	    BACKEND|POSITIONAL|WRITABLE|METADATA|
-	    SYNONYMS|VALUESTATS },
+	    BACKEND|POSITIONAL|VALUESTATS },
 	{ "multi_glass", MULTI|
-	    BACKEND|POSITIONAL|WRITABLE|METADATA|
-	    SYNONYMS|VALUESTATS },
+	    BACKEND|POSITIONAL|VALUESTATS },
 	{ "remoteprog_chert", REMOTE|
 	    BACKEND|TRANSACTIONS|POSITIONAL|WRITABLE|METADATA|VALUESTATS },
 	{ "remotetcp_chert", REMOTE|
@@ -112,17 +102,15 @@ TestRunner::set_properties_for_backend(const string & backend_name)
 }
 
 void
-TestRunner::do_tests_for_backend(BackendManager&& manager)
+TestRunner::do_tests_for_backend(BackendManager * manager)
 {
-    const string& backend_name = manager.get_dbtype();
+    string backend_name = manager->get_dbtype();
     if (use_backend(backend_name)) {
-	manager.set_datadir(srcdir + "/testdata/");
+	backendmanager = manager;
+	backendmanager->set_datadir(srcdir + "/testdata/");
 	set_properties_for_backend(backend_name);
-	cout << "Running tests with backend \"" << backend_name << "\"..."
-	     << endl;
-	backendmanager = &manager;
+	cout << "Running tests with backend \"" << backendmanager->get_dbtype() << "\"..." << endl;
 	result_so_far = max(result_so_far, run());
-	backendmanager = NULL;
     }
 }
 
@@ -135,29 +123,71 @@ TestRunner::run_tests(int argc, char ** argv)
 	test_driver::parse_command_line(argc, argv);
 	srcdir = test_driver::get_srcdir();
 
-	do_tests_for_backend(BackendManager());
+	{
+	    BackendManager m;
+	    do_tests_for_backend(&m);
+	}
 
 #ifdef XAPIAN_HAS_INMEMORY_BACKEND
-	do_tests_for_backend(BackendManagerInMemory());
+	{
+	    BackendManagerInMemory m;
+	    do_tests_for_backend(&m);
+	}
 #endif
 
 #ifdef XAPIAN_HAS_GLASS_BACKEND
-	do_tests_for_backend(BackendManagerGlass());
-	do_tests_for_backend(BackendManagerSingleFile("glass"));
-	do_tests_for_backend(BackendManagerMulti("glass"));
-# ifdef XAPIAN_HAS_REMOTE_BACKEND
-	do_tests_for_backend(BackendManagerRemoteProg("glass"));
-	do_tests_for_backend(BackendManagerRemoteTcp("glass"));
-# endif
+	{
+	    BackendManagerGlass m;
+	    do_tests_for_backend(&m);
+	}
+
+	{
+	    BackendManagerSingleFile m("glass");
+	    do_tests_for_backend(&m);
+	}
 #endif
 
 #ifdef XAPIAN_HAS_CHERT_BACKEND
-	do_tests_for_backend(BackendManagerChert());
-	do_tests_for_backend(BackendManagerMulti("chert"));
-# ifdef XAPIAN_HAS_REMOTE_BACKEND
-	do_tests_for_backend(BackendManagerRemoteProg("chert"));
-	do_tests_for_backend(BackendManagerRemoteTcp("chert"));
-# endif
+	{
+	    BackendManagerChert m;
+	    do_tests_for_backend(&m);
+	}
+#endif
+
+#ifdef XAPIAN_HAS_GLASS_BACKEND
+	{
+	    BackendManagerMulti m("glass");
+	    do_tests_for_backend(&m);
+	}
+#endif
+#ifdef XAPIAN_HAS_CHERT_BACKEND
+	{
+	    BackendManagerMulti m("chert");
+	    do_tests_for_backend(&m);
+	}
+#endif
+
+#ifdef XAPIAN_HAS_REMOTE_BACKEND
+#ifdef XAPIAN_HAS_GLASS_BACKEND
+	{
+	    BackendManagerRemoteProg m("glass");
+	    do_tests_for_backend(&m);
+	}
+	{
+	    BackendManagerRemoteTcp m("glass");
+	    do_tests_for_backend(&m);
+	}
+#endif
+#ifdef XAPIAN_HAS_CHERT_BACKEND
+	{
+	    BackendManagerRemoteProg m("chert");
+	    do_tests_for_backend(&m);
+	}
+	{
+	    BackendManagerRemoteTcp m("chert");
+	    do_tests_for_backend(&m);
+	}
+#endif
 #endif
     } catch (const Xapian::Error &e) {
 	cerr << "\nTest harness failed with " << e.get_description() << endl;

@@ -190,11 +190,11 @@ io_read_block(int fd, char * p, size_t n, off_t b, off_t o)
 	    return;
 	// -1 is error, 0 is EOF
 	if (c <= 0) {
-	    if (c == 0)
-		throw_block_error("EOF reading block ", b);
 	    // We get EINTR if the syscall was interrupted by a signal.
 	    // In this case we should retry the read.
 	    if (errno == EINTR) continue;
+	    if (c == 0)
+		throw_block_error("EOF reading block ", b);
 	    throw_block_error("Error reading block ", b, errno);
 	}
 	p += c;
@@ -202,7 +202,7 @@ io_read_block(int fd, char * p, size_t n, off_t b, off_t o)
 	o += c;
     }
 #else
-    if (rare(lseek(fd, o, SEEK_SET) < 0))
+    if (rare(lseek(fd, o, SEEK_SET) == off_t(-1)))
 	throw_block_error("Error seeking to block ", b, errno);
     while (true) {
 	ssize_t c = read(fd, p, n);
@@ -210,11 +210,11 @@ io_read_block(int fd, char * p, size_t n, off_t b, off_t o)
 	if (usual(c == ssize_t(n)))
 	    return;
 	if (c <= 0) {
-	    if (c == 0)
-		throw_block_error("EOF reading block ", b);
 	    // We get EINTR if the syscall was interrupted by a signal.
 	    // In this case we should retry the read.
 	    if (errno == EINTR) continue;
+	    if (c == 0)
+		throw_block_error("EOF reading block ", b);
 	    throw_block_error("Error reading block ", b, errno);
 	}
 	p += c;
@@ -247,7 +247,7 @@ io_write_block(int fd, const char * p, size_t n, off_t b, off_t o)
 	o += c;
     }
 #else
-    if (rare(lseek(fd, o, SEEK_SET) < 0))
+    if (rare(lseek(fd, o, SEEK_SET) == off_t(-1)))
 	throw_block_error("Error seeking to block ", b, errno);
     while (true) {
 	ssize_t c = write(fd, p, n);
@@ -273,7 +273,7 @@ io_tmp_rename(const std::string & tmp_file, const std::string & real_file)
     // We retry on EXDEV a few times as some older Linux kernels are buggy and
     // fail with EXDEV when the two files are on the same device (as they
     // always ought to be when this function is used).  Don't retry forever in
-    // case someone calls this with files on different devices.
+    // case someone calls this with files one different devices.
     //
     // We're not sure exactly which kernels are buggy in this way, but there's
     // discussion here: http://www.spinics.net/lists/linux-nfs/msg17306.html

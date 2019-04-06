@@ -2,7 +2,7 @@
  * @brief Run multiple tests for different backends.
  */
 /* Copyright 2008 Lemur Consulting Ltd
- * Copyright 2008,2009,2014,2015,2017,2018 Olly Betts
+ * Copyright 2008,2009,2014,2015 Olly Betts
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -58,7 +58,7 @@ class TestRunner {
 
     /** Run the tests with the specified backend.
      */
-    void do_tests_for_backend(BackendManager&& manager);
+    void do_tests_for_backend(BackendManager * manager);
 
   protected:
     enum {
@@ -78,7 +78,6 @@ class TestRunner {
 	INMEMORY	= 0x00002000,
 	CHERT		= 0x00004000,
 	GLASS		= 0x00008000,
-	COMPACT		= 0x00010000,
     };
 
   public:

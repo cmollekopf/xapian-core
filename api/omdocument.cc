@@ -218,25 +218,16 @@ Document::unserialise(const std::string &s)
 
 /////////////////////////////////////////////////////////////////////////////
 
-bool
-OmDocumentTerm::add_position(Xapian::termcount wdf_inc, Xapian::termpos tpos)
+void
+OmDocumentTerm::add_position(Xapian::termpos tpos)
 {
-    LOGCALL(DB, bool, "OmDocumentTerm::add_position", wdf_inc | tpos);
-
-    if (rare(deleted)) {
-	wdf = wdf_inc;
-	deleted = false;
-	positions.push_back(tpos);
-	return true;
-    }
-
-    wdf += wdf_inc;
+    LOGCALL_VOID(DB, "OmDocumentTerm::add_position", tpos);
 
     // We generally expect term positions to be added in approximately
     // increasing order, so check the end first
     if (positions.empty() || tpos > positions.back()) {
 	positions.push_back(tpos);
-	return false;
+	return;
     }
 
     // Search for the position the term occurs at.  Use binary chop to
@@ -246,16 +237,12 @@ OmDocumentTerm::add_position(Xapian::termcount wdf_inc, Xapian::termpos tpos)
     if (i == positions.end() || *i != tpos) {
 	positions.insert(i, tpos);
     }
-
-    return false;
 }
 
 void
 OmDocumentTerm::remove_position(Xapian::termpos tpos)
 {
     LOGCALL_VOID(DB, "OmDocumentTerm::remove_position", tpos);
-
-    Assert(!deleted);
 
     // Search for the position the term occurs at.  Use binary chop to
     // search, since this is a sorted list.
@@ -363,13 +350,12 @@ Xapian::Document::Internal::add_posting(const string & tname, Xapian::termpos tp
     map<string, OmDocumentTerm>::iterator i;
     i = terms.find(tname);
     if (i == terms.end()) {
-	++termlist_size;
 	OmDocumentTerm newterm(wdfinc);
-	newterm.append_position(tpos);
+	newterm.add_position(tpos);
 	terms.insert(make_pair(tname, newterm));
     } else {
-	if (i->second.add_position(wdfinc, tpos))
-	    ++termlist_size;
+	i->second.add_position(tpos);
+	if (wdfinc) i->second.inc_wdf(wdfinc);
     }
 }
 
@@ -381,12 +367,10 @@ Xapian::Document::Internal::add_term(const string & tname, Xapian::termcount wdf
     map<string, OmDocumentTerm>::iterator i;
     i = terms.find(tname);
     if (i == terms.end()) {
-	++termlist_size;
 	OmDocumentTerm newterm(wdfinc);
 	terms.insert(make_pair(tname, newterm));
     } else {
-	if (i->second.increase_wdf(wdfinc))
-	    ++termlist_size;
+	if (wdfinc) i->second.inc_wdf(wdfinc);
     }
 }
 
@@ -399,13 +383,13 @@ Xapian::Document::Internal::remove_posting(const string & tname,
 
     map<string, OmDocumentTerm>::iterator i;
     i = terms.find(tname);
-    if (i == terms.end() || i->second.is_deleted()) {
+    if (i == terms.end()) {
 	throw Xapian::InvalidArgumentError("Term '" + tname +
 		"' is not present in document, in "
 		"Xapian::Document::Internal::remove_posting()");
     }
     i->second.remove_position(tpos);
-    if (wdfdec) i->second.decrease_wdf(wdfdec);
+    if (wdfdec) i->second.dec_wdf(wdfdec);
     positions_modified = true;
 }
 
@@ -415,23 +399,19 @@ Xapian::Document::Internal::remove_term(const string & tname)
     need_terms();
     map<string, OmDocumentTerm>::iterator i;
     i = terms.find(tname);
-    if (i == terms.end() || i->second.is_deleted()) {
+    if (i == terms.end()) {
 	throw Xapian::InvalidArgumentError("Term '" + tname +
 		"' is not present in document, in "
 		"Xapian::Document::Internal::remove_term()");
     }
-    --termlist_size;
-    if (!positions_modified) {
-	positions_modified = !i->second.positions.empty();
-    }
-    i->second.remove();
+    positions_modified = !i->second.positions.empty();
+    terms.erase(i);
 }
 
 void
 Xapian::Document::Internal::clear_terms()
 {
     terms.clear();
-    termlist_size = 0;
     terms_here = true;
     // Assume there was a term with positions for now.
     // FIXME: may be worth checking...
@@ -447,7 +427,7 @@ Xapian::Document::Internal::termlist_count() const
 	need_terms();
     }
     Assert(terms_here);
-    return termlist_size;
+    return terms.size();
 }
 
 void
@@ -461,12 +441,11 @@ Xapian::Document::Internal::need_terms() const
 	    Xapian::PositionIterator p = t.positionlist_begin();
 	    OmDocumentTerm term(t.get_wdf());
 	    for ( ; p != t.positionlist_end(); ++p) {
-		term.append_position(*p);
+		term.add_position(*p);
 	    }
 	    terms.insert(make_pair(*t, term));
 	}
     }
-    termlist_size = terms.size();
     terms_here = true;
 }
 
@@ -501,7 +480,7 @@ Xapian::Document::Internal::get_description() const
     if (terms_here) {
 	if (data_here || values_here) desc += ", ";
 	desc += "terms[";
-	desc += str(termlist_size);
+	desc += str(terms.size());
 	desc += ']';
     }
 

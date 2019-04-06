@@ -93,8 +93,6 @@ AC_CONFIG_HEADERS([config.h])
 
 AC_CONFIG_MACRO_DIR([m4])
 
-AM_PROG_AR
-
 dnl Use libtool to manage our libraries.
 LT_PREREQ([2.2.8])
 dnl Default to only building shared libraries.
@@ -262,18 +260,6 @@ if $GREP '^#define _LARGE_FILES 1$' confdefs.h > /dev/null 2>&1 ; then
 fi
 AC_SUBST([abi_affecting_cxxflags])
 
-AC_PREPROC_IFELSE([AC_LANG_SOURCE([[
-#if defined __WIN32__ || defined _WIN32
-#error WIN32
-#endif
-]])], [win32=no], [win32=yes])
-
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([], [[
-#ifdef _MSC_VER
-#error MSVC
-#endif
-]])], [msvc=no], [msvc=yes])
-
 XAPIAN_LDFLAGS=
 XAPIAN_LIBS=
 AC_SUBST([XAPIAN_LDFLAGS])
@@ -381,15 +367,8 @@ AC_CHECK_DECLS([log2(double)], [], [],
 [#include <cmath>
 using namespace std;])
 
-dnl exp10() is a GNU libc extension.
-AC_CHECK_DECLS([exp10(double)], [], [],
-[#include <cmath>
-using namespace std;])
-
-dnl Darwin provides __exp10().
-AC_CHECK_DECLS([__exp10(double)], [], [],
-[#include <cmath>
-using namespace std;])
+dnl exp10() is a GNU libc extension.  Darwin provides __exp10().
+AC_CHECK_FUNCS([exp10 __exp10])
 
 dnl GCC provides __builtin_exp10() (but notably clang doesn't currently).
 dnl On mingw, __builtin_exp10() causes GCC to generate a call to exp10() which
@@ -431,13 +410,10 @@ AC_TRY_COMPILE([
 CXXFLAGS=$save_CXXFLAGS
 
 AC_CHECK_DECLS([__builtin_bswap16, __builtin_bswap32], [], [], [ ])
-AC_CHECK_DECLS([_byteswap_ushort, _byteswap_ulong], [], [],
-	       [#include <stdlib.h>])
 AC_CHECK_DECLS([__builtin_clz, __builtin_clzl, __builtin_clzll], [], [], [ ])
 AC_CHECK_DECLS([__builtin_ctz, __builtin_ctzl, __builtin_ctzll], [], [], [ ])
 AC_CHECK_DECLS([__builtin_expect], [], [], [ ])
 AC_CHECK_DECLS([__builtin_popcount, __builtin_popcountl, __builtin_popcountll], [], [], [ ])
-AC_CHECK_DECLS([__popcnt, __popcnt64], [], [], [#include <intrin.h>])
 
 dnl Check for time functions.
 AC_CHECK_FUNCS([clock_gettime sleep nanosleep gettimeofday ftime])
@@ -484,9 +460,6 @@ AC_TRY_COMPILE([#include <setjmp.h>],
 dnl Used by tests/harness/cputimer.cc:
 AC_CHECK_FUNCS([getrusage times sysconf])
 
-dnl Used by tests/harness/unixcmd.cc
-AC_CHECK_FUNCS([nftw])
-
 dnl Used by tests/api_replicate.cc.
 dnl
 dnl Solaris < 10 only has putenv().
@@ -494,12 +467,8 @@ dnl
 dnl Microsoft have marked putenv() as deprecated, so we use _putenv_s() under
 dnl MSVC to avoid deprecation warnings.  We probe here since mingw doesn't
 dnl currently (v3.20) provide _putenv_s(), so we can't just use it conditional
-dnl on __WIN32__ being defined.  We need to check for a declaration rather
-dnl than just seeing if the symbol exists, as the symbol will exist in the C
-dnl runtime DLL even if mingw doesn't declare it in its headers.
-AC_CHECK_FUNCS([setenv])
-AC_CHECK_DECLS([_putenv_s(const char *,const char *)], [], [],
-[#include <stdlib.h>])
+dnl on __WIN32__ being defined.
+AC_CHECK_FUNCS([setenv _putenv_s])
 
 dnl See if we have closefrom(), or some functions that are useful to implement
 dnl closefrom() on platforms which don't provide it.
@@ -534,6 +503,7 @@ AC_CHECK_SIZEOF([long])
 AC_CHECK_SIZEOF([long long])
 
 AC_CHECK_HEADERS([sys/types.h])
+AC_CHECK_SIZEOF([off_t])
 
 AC_MSG_CHECKING([for 32 bit integer type])
 case 4 in
@@ -556,6 +526,19 @@ case 8 in
       AC_MSG_ERROR([No 64 bit integer type found])
 esac
 AC_MSG_RESULT([$INT64_T])
+
+dnl Used to avoid undefined behaviour left shifting file sizes.
+AC_MSG_CHECKING([for unsigned equivalent of off_t])
+case $ac_cv_sizeof_off_t in
+    "$ac_cv_sizeof_int")       UNSIGNED_OFF_T=unsigned ;;
+    "$ac_cv_sizeof_long")      UNSIGNED_OFF_T='unsigned long' ;;
+    "$ac_cv_sizeof_long_long") UNSIGNED_OFF_T='unsigned long long' ;;
+    *)
+      AC_MSG_RESULT([none found])
+      AC_MSG_ERROR([No unsigned type equivalent to off_t found])
+esac
+AC_DEFINE_UNQUOTED([UNSIGNED_OFF_T], [$UNSIGNED_OFF_T], [Define to an unsigned type equivalent to off_t])
+AC_MSG_RESULT([$UNSIGNED_OFF_T])
 
 dnl Check for perl (needed to generate some sources and documentation).
 AC_PATH_PROG([PERL], [perl], [])
@@ -643,7 +626,7 @@ if test -n "${VALGRIND-unset}" ; then
     rm -f $vglogwild
     if $VALGRIND --log-file="$vglog" --child-silent-after-fork=yes -q true 2>&AS_MESSAGE_LOG_FD ; then
       for f in $vglogwild ; do
-	case $f in
+        case $f in
 	$vglog*) VALGRIND= ;;
 	esac
       done
@@ -714,14 +697,14 @@ dnl  contains an snprintf equivalent to sprintf, i.e., one that ignores the
 dnl  size argument.  Thus, the use of snprintf with early libc4 leads to
 dnl  serious security problems.
 dnl
-dnl It also warns that glibc < 2.0.6 (and presumably other pre-C99
+dnl It also warns that glibc < 2.0.6 (and presumably other pre-C90
 dnl implementations) return -1 when truncating so check that we get the
-dnl ISO C99 semantics for the returned length when truncating.  If we
+dnl ISO C90 semantics for the returned length when truncating.  If we
 dnl have a working snprintf but with non-ISO return semantics, handle
 dnl that case separately as it may still be useful in many cases.
 dnl
 dnl mingw has _snprintf so check for that too.
-AC_MSG_CHECKING([for working ISO C99 conforming snprintf])
+AC_MSG_CHECKING([for working ISO C90 conforming snprintf])
 ac_cv_func_snprintf_noniso=no
 for func in snprintf _snprintf ; do
   AC_RUN_IFELSE([
@@ -757,7 +740,7 @@ done
 AC_MSG_RESULT([$ac_cv_func_snprintf])
 case $ac_cv_func_snprintf in
   no)
-    AC_MSG_CHECKING([for working non-ISO C99 conforming snprintf])
+    AC_MSG_CHECKING([for working non-ISO C90 conforming snprintf])
     AC_MSG_RESULT([$ac_cv_func_snprintf_noniso])
     if test no != "$ac_cv_func_snprintf_noniso" ; then
       AC_DEFINE_UNQUOTED([SNPRINTF], [$ac_cv_func_snprintf_noniso],
@@ -781,38 +764,23 @@ dnl ***************************
 
 dnl Check which database backends should be built.
 
-AC_DEFUN([_XAPIAN_BACKEND_ENABLE],
+AC_DEFUN([XAPIAN_BACKEND_ENABLE],
   [AC_ARG_ENABLE([backend_$1],
-    [AS_HELP_STRING([--enable-backend-$1], [build the $1 database backend [default=$3]])],
+    [AS_HELP_STRING([--enable-backend-$1], [build the $1 database backend [default=yes]])],
     [case $enableval in
       yes|no) ;;
       *) AC_MSG_ERROR([Invalid option: '--enable-backend-$1=$enableval']) ;;
-    esac], [enable_backend_$1=$2])
-  ])
-
-AC_DEFUN([XAPIAN_BACKEND_ENABLE],
-  [_XAPIAN_BACKEND_ENABLE([$1],
-    m4_default([$2], [yes]),
-    m4_default([$3], [yes]))
+    esac], [enable_backend_$1=yes])
   ])
 
 dnl When adding a new backend, update INSTALL too.
 XAPIAN_BACKEND_ENABLE([chert])
 XAPIAN_BACKEND_ENABLE([glass])
 XAPIAN_BACKEND_ENABLE([inmemory])
-default_enable_backend_remote=yes
-case $host_os in
-  *djgpp* | *msdos* )
-    dnl We don't currently support the remote backend on this platform so
-    dnl disable it by default.
-    default_enable_backend_remote=no
-    ;;
-esac
-XAPIAN_BACKEND_ENABLE([remote], [$default_enable_backend_remote], [yes (except for MSDOS)])
+XAPIAN_BACKEND_ENABLE([remote])
 
 use_proc_for_uuid=0
 use_win32_uuid_api=0
-win32_need_lws2_32=0
 case $enable_backend_chert$enable_backend_glass in
 *yes*)
   dnl We use zlib for compressing tags in chert/glass.  We could
@@ -840,17 +808,9 @@ case $enable_backend_chert$enable_backend_glass in
 
   dnl Find the UUID library (from e2fsprogs/util-linux-ng, not the OSSP one).
 
-  case $host_os-$win32 in
-    *-yes | *cygwin*) dnl Use built-in win32 API.
+  case $host_os in
+    *mingw* | *cygwin*) dnl Use built-in API.
       use_win32_uuid_api=1
-      AC_DEFINE([USE_WIN32_UUID_API], [1],
-		[Define to 1 to use UuidCreate(), etc])
-      if test $win32 = yes ; then
-	dnl We need -lws2_32 for htonl(), etc, but not for Cygwin which
-	dnl provides these functions in its libc.
-	win32_need_lws2_32=1
-      fi
-      XAPIAN_LIBS="$XAPIAN_LIBS -lrpcrt4"
       ;;
     *)
       dnl Check for uuid/uuid.h (e2fsprogs/util-linux-ng) or uuid.h
@@ -900,29 +860,26 @@ case $enable_backend_chert$enable_backend_glass in
 	      [Define to 1 if you have the 'uuid_unparse_lower' function.])
     ])
   LIBS=$SAVE_LIBS
-
-  case $host_os in
-    *djgpp* | *msdos* )
-      dnl DJGPP has a dummy implementation of fork which always fails.
-      dnl
-      dnl For disk-based backends, use flock() for locking, which doesn't need
-      dnl fork() or socketpair().
-      AC_DEFINE([FLINTLOCK_USE_FLOCK], 1, [Define to use flock() for flint-compatible locking])
-      ;;
-  esac
   ;;
 esac
 AM_CONDITIONAL([USE_PROC_FOR_UUID], [test "$use_proc_for_uuid" = 1])
 AM_CONDITIONAL([USE_WIN32_UUID_API], [test "$use_win32_uuid_api" = 1])
 
+REMOTE_LIBS=
 if test "$enable_backend_remote" = yes ; then
+  AC_PREPROC_IFELSE([AC_LANG_SOURCE([[
+#ifdef __WIN32__
+#error WIN32
+#endif
+  ]])], [win32=no], [win32=yes])
+
   case $host_os-$win32 in
     *-yes )
       dnl For mingw and msvc we have an alternative implementation which
       dnl doesn't need fork() or socketpair().
       dnl
       dnl We need -lws2_32 for getaddrinfo(), etc.
-      win32_need_lws2_32=1
+      REMOTE_LIBS=-lws2_32
       dnl Vista is needed for the AI_ADDRCONFIG flag to getaddrinfo().
       AC_DEFINE([WINVER], [0x600],
 		[Version of Windows to assume (0x600 => Vista).])
@@ -930,11 +887,15 @@ if test "$enable_backend_remote" = yes ; then
 		[Version of Windows to assume.])
       ;;
     *djgpp* | *msdos* )
-      dnl DJGPP has a dummy implementation of fork which always fails.  If
-      dnl someone actually wanted remote backend support, then DJGPP has a
+      dnl DJGPP has a dummy implementation of fork which always fails.
+      dnl
+      dnl For disk-based backend, use flock() for locking, which doesn't need
+      dnl fork() or socketpair().
+      AC_DEFINE([FLINTLOCK_USE_FLOCK], 1, [Define to use flock() for flint-compatible locking])
+      dnl If someone actually wanted remote backend support, then DJGPP has a
       dnl pthreads port, so using threads like we do on Windows would make more
       dnl sense.
-      AC_MSG_ERROR([The remote backend is not currently supported on this platform.])
+      enable_backend_remote=no
       ;;
     *)
       dnl On Unix, we need fork and socketpair for the remotebackend.
@@ -962,16 +923,15 @@ if test "$enable_backend_remote" = yes ; then
       AC_SEARCH_LIBS([inet_ntop], [nsl socket], [], [
 	AC_MSG_ERROR([inet_ntop() required for the remote backend - if an extra library is needed, pass LIBS=-lfoo to configure.  Or --disable-backend-remote to disable it.)])
       ])
-      XAPIAN_LIBS="$XAPIAN_LIBS $LIBS"
+      REMOTE_LIBS=$LIBS
       LIBS=$SAVE_LIBS
       ;;
   esac
 
-  TYPE_SOCKLEN_T
-fi
-
-if test "$win32_need_lws2_32" = 1 ; then
-  XAPIAN_LIBS="$XAPIAN_LIBS -lws2_32"
+  if test "$enable_backend_remote" = yes ; then
+    TYPE_SOCKLEN_T
+    XAPIAN_LIBS="$XAPIAN_LIBS $REMOTE_LIBS"
+  fi
 fi
 
 AC_ARG_ENABLE([visibility],
@@ -1022,13 +982,7 @@ AC_CHECK_DECL([fdatasync(int)], [
 
 AC_CHECK_FUNCS([fsync])
 AC_CHECK_FUNCS([posix_fadvise])
-if test "$win32" = no ; then
-  dnl ftruncate() under Wine seems to be buggy and sometimes fails, though
-  dnl a cut-down reproducer seems fine.  For now just avoid ftruncate()
-  dnl entirely on this platform - we'll fallback to lseek() + write() of a
-  dnl single zero byte, which is pretty efficient.
-  AC_CHECK_FUNCS([ftruncate])
-fi
+AC_CHECK_FUNCS([ftruncate])
 
 dnl HP-UX has pread and pwrite, but they don't work!  Apparently this problem
 dnl manifests when largefile support is enabled, and we definitely want that
@@ -1109,20 +1063,6 @@ $p
 			       [explicit prototype needed for pwrite (if any)])
 	  fi
 	])
-    ;;
-esac
-
-AC_MSG_CHECKING([for directory separator(s)])
-case $host_os-$win32 in
-  *-yes | cygwin* | os2* | *djgpp* | *msdos* )
-    AC_MSG_RESULT([/ and \\])
-    AC_DEFINE([DIR_SEPS], ["/\\"], [directory separator(s) as a character or string literal])
-    AC_DEFINE([DIR_SEPS_LIST], [{ '/', '\\' }], [directory separator(s) as an initialiser list])
-    ;;
-  *)
-    AC_MSG_RESULT([/])
-    AC_DEFINE([DIR_SEPS], ['/'], [directory separator(s) as a character or string literal])
-    AC_DEFINE([DIR_SEPS_LIST], [{ '/' }], [directory separator(s) as an initialiser list])
     ;;
 esac
 
@@ -1257,11 +1197,11 @@ if test yes = "$GXX"; then
 
   if test no != "$enable_visibility"; then
     dnl GCC doesn't support symbol visibility on all platforms (e.g. it isn't
-    dnl supported on mingw and visibility attributes result in warnings).
-    AC_MSG_CHECKING([if $CXX -fvisibility=hidden -fvisibility-inlines-hidden works])
-    if echo 'int bar() __attribute__((visibility("default"))); int baz() __attribute__((visibility("internal"))); int bar() { return 6; } int baz() { return 7; } int foo() {return 42;}'|$CXX -Werror -fvisibility=hidden -fvisibility-inlines-hidden -c -oconftest.o -xc++ - >&AS_MESSAGE_LOG_FD 2>&AS_MESSAGE_LOG_FD ; then
+    dnl on mingw).
+    AC_MSG_CHECKING([if $CXX -fvisibility=hidden works])
+    if echo 'int bar() __attribute__((visibility("default"))); int foo() {return 42;}'|$CXX -Werror -fvisibility=hidden -c -oconftest.o -xc++ - >&AS_MESSAGE_LOG_FD 2>&AS_MESSAGE_LOG_FD ; then
       AC_MSG_RESULT([yes])
-      AM_CXXFLAGS="$AM_CXXFLAGS -fvisibility=hidden -fvisibility-inlines-hidden"
+      AM_CXXFLAGS="$AM_CXXFLAGS -fvisibility=hidden"
       dash_d_visibility=-DXAPIAN_ENABLE_VISIBILITY
     else
       AC_MSG_RESULT([no])
@@ -1340,89 +1280,9 @@ esac
 AC_SUBST([FP_EXCESS_PRECISION])
 
 AH_BOTTOM(
-[/* Disable stupid MSVC warnings. */
+[/* Disable stupid MSVC "performance" warning for converting int to bool. */
 #ifdef _MSC_VER
-/* Passing an empty parameter to a single parameter macro. */
-# pragma warning(disable:4003)
-/* A "performance" warning for converting int to bool. */
 # pragma warning(disable:4800)
-
-/* Tell MSVC we want M_PI, etc defined. */
-# define _USE_MATH_DEFINES
-
-/* Tell MSVC we don't want max() and min() macros defined. */
-# define NOMINMAX
-#endif
-
-/* Make the POSIX-like functions support large files.  MSVC needs this;
- * current mingw32 does too; mingw64 supports _FILE_OFFSET_BITS, which
- * AC_SYS_LARGEFILE should discover and enable automatically.
- */
-#if defined _MSC_VER || \
-    (defined __MINGW32__ && !defined _FILE_OFFSET_BITS)
-
-# include <sys/stat.h>
-# include <sys/types.h>
-# include <io.h>
-/* zlib.h uses off_t so we need to include it before we redefine off_t. */
-# include <zlib.h>
-
-// MSVC needs to call _stat64() instead of stat() and the struct which holds
-// the information is "struct _stat64" instead of "struct stat" so we just
-// use #define to replace both in one go.  We also want to use _fstat64()
-// instead of fstat() but in this case we can use a function-like macro.
-//
-// Mingw has _stat64() but unhelpfully for our purposes, it has an extra
-// underscore prefix on the struct name ("struct __stat64") so there we
-// target _stati64 instead.  This has 64-bit file size but the time_t size
-// is switchable.  We don't really care about file timestamps in the
-// library, so this should be fine.
-//
-// This hack is a problem is we ever want a method called "stat", or one called
-// fstat which takes 2 parameters, but we can probably live with these
-// limitations.
-
-# ifdef stat
-#  undef stat
-# endif
-
-# ifdef fstat
-#  undef fstat
-# endif
-
-# ifdef _MSC_VER
-#  define stat _stat64
-#  define fstat(FD, BUF) _fstat64(FD, BUF)
-# else
-#  define stat _stati64
-#  define fstat(FD, BUF) _fstati64(FD, BUF)
-# endif
-
-# ifdef lseek
-#  undef lseek
-# endif
-
-# ifdef off_t
-#  undef off_t
-# endif
-
-# define lseek(FD, OFF, WHENCE) _lseeki64(FD, OFF, WHENCE)
-/* Redefine via a typedef so C++ code off_t(-1) works - it wouldn't if we did:
- * #define off_t long long
- */
-typedef long long off_t_redefinition_typedef;
-# define off_t off_t_redefinition_typedef
-
-#endif
-
-/* MSVC defines _WIN32 but not __WIN32__. */
-#if !defined __WIN32__ && defined _WIN32
-# define __WIN32__
-#endif
-
-/* MSVC defines _WIN64 but not __WIN64__. */
-#if !defined __WIN64__ && defined _WIN64
-# define __WIN64__
 #endif
 
 /* _FORTIFY_SOURCE is only supported by GCC >= 4.1 and glibc >= 2.3.4, but it
@@ -1461,7 +1321,7 @@ typedef long long off_t_redefinition_typedef;
 /* With Sun CC 5.13 (Studio 12.4) on Solaris 11.2, <math.h> seems to get
  * implicitly included somehow before <cmath>, and compilation fails due
  * to 'std::exception' colliding with 'struct exception'.  It's not clear
- * how to avoid this, so just define the same magic macro which <cmath> does
+ * how to avoid this, so just define the making macro which <cmath> does
  * before it includes <math.h>.
  */
 #ifdef __SUNPRO_CC
@@ -1588,7 +1448,7 @@ $CXXCPP $cxxcpp_flags\
 	-DREVISION="\"$REVISION\""\
 	$dash_d_visibility\
 	$srcdir/include/xapian/version_h.cc|\
-	${SED-sed} '0,/const char \* dummy/d;/"/!d;s/^ *//;/^#/d;s/ *$//;s/" *,//;s/"//g;s/@@/"/g;s/  */ /g;s/ *,\r$//;s/ *,$//;s/____/ /g;s/\\\\$/\\/'\
+	${SED-sed} '/"/!d;s/^ *//;/^#/d;s/ *$//;s/" *,//;s/"//g;s/@@/"/g;s/  */ /g;s/ *,\r$//;s/ *,$//;s/____/ /g;s/\\\\$/\\/'\
 	> include/xapian/version.h.tmp
 dnl Only update the file if it has changed, so we don't alter the timestamp
 dnl and cause lots of rebuilding needlessly.  However, the build system

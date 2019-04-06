@@ -134,7 +134,7 @@ RemoteServer::get_message(double timeout, string & result,
 	string errmsg("Expecting message type ");
 	errmsg += str(int(required_type));
 	errmsg += ", got ";
-	errmsg += str(type);
+	errmsg += str(int(type));
 	throw Xapian::NetworkError(errmsg);
     }
     return static_cast<message_type>(type);

@@ -173,7 +173,7 @@ GlassDatabase::GlassDatabase(int fd)
 	  synonym_table(fd, version_file.get_offset(), readonly),
 	  spelling_table(fd, version_file.get_offset(), readonly),
 	  docdata_table(fd, version_file.get_offset(), readonly),
-	  lock(),
+	  lock(string()),
 	  changes(string())
 {
     LOGCALL_CTOR(DB, "GlassDatabase", fd);
@@ -438,7 +438,7 @@ void
 GlassDatabase::send_whole_database(RemoteConnection & conn, double end_time)
 {
     LOGCALL_VOID(DB, "GlassDatabase::send_whole_database", conn | end_time);
-#ifdef XAPIAN_HAS_REMOTE_BACKEND
+
     // Send the current revision number in the header.
     string buf;
     string uuid = get_uuid();
@@ -470,10 +470,6 @@ GlassDatabase::send_whole_database(RemoteConnection & conn, double end_time)
 	}
 	p += len + 1;
     } while (*p);
-#else
-    (void)conn;
-    (void)end_time;
-#endif
 }
 
 void
@@ -483,7 +479,7 @@ GlassDatabase::write_changesets_to_fd(int fd,
 				      ReplicationInfo * info)
 {
     LOGCALL_VOID(DB, "GlassDatabase::write_changesets_to_fd", fd | revision | need_whole_db | info);
-#ifdef XAPIAN_HAS_REMOTE_BACKEND
+
     int whole_db_copies_left = MAX_DB_COPIES_PER_CONVERSATION;
     glass_revision_number_t start_rev_num = 0;
     string start_uuid = get_uuid();
@@ -599,12 +595,6 @@ GlassDatabase::write_changesets_to_fd(int fd,
 	}
     }
     conn.send_message(REPL_REPLY_END_OF_CHANGES, string(), 0.0);
-#else
-    (void)fd;
-    (void)revision;
-    (void)need_whole_db;
-    (void)info;
-#endif
 }
 
 void
@@ -749,7 +739,14 @@ GlassDatabase::get_unique_terms(Xapian::docid did) const
     LOGCALL(DB, Xapian::termcount, "GlassDatabase::get_unique_terms", did);
     Assert(did != 0);
     intrusive_ptr<const GlassDatabase> ptrtothis(this);
-    RETURN(GlassTermList(ptrtothis, did).get_unique_terms());
+    GlassTermList termlist(ptrtothis, did);
+    // Note that the "approximate" size should be exact in this case.
+    //
+    // get_unique_terms() really ought to only count terms with wdf > 0, but
+    // that's expensive to calculate on demand, so for now let's just ensure
+    // unique_terms <= doclen.
+    RETURN(min(termlist.get_approx_size(),
+	       postlist_table.get_doclength(did, ptrtothis)));
 }
 
 void
@@ -798,10 +795,9 @@ GlassDatabase::get_doclength_upper_bound() const
 Xapian::termcount
 GlassDatabase::get_wdf_upper_bound(const string & term) const
 {
-    Assert(!term.empty());
-    Xapian::termcount wdfub;
-    postlist_table.get_freqs(term, NULL, NULL, &wdfub);
-    return min(wdfub, version_file.get_wdf_upper_bound());
+    Xapian::termcount cf;
+    get_freqs(term, NULL, &cf);
+    return min(cf, version_file.get_wdf_upper_bound());
 }
 
 bool
@@ -1002,7 +998,7 @@ GlassDatabase::locked() const
 ///////////////////////////////////////////////////////////////////////////
 
 GlassWritableDatabase::GlassWritableDatabase(const string &dir, int flags,
-					     int block_size)
+					       int block_size)
 	: GlassDatabase(dir, flags, block_size),
 	  change_count(0),
 	  flush_threshold(0),

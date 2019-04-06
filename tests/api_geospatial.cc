@@ -56,7 +56,7 @@ builddb_coords1(Xapian::WritableDatabase &db, const string &)
 }
 
 /// Test behaviour of the LatLongDistancePostingSource
-DEFINE_TESTCASE(latlongpostingsource1, generated && !remote && !inmemory) {
+DEFINE_TESTCASE(latlongpostingsource1, backend && writable && !remote && !inmemory) {
     Xapian::Database db = get_database("coords1", builddb_coords1, "");
     Xapian::LatLongCoord coord1(10, 10);
     Xapian::LatLongCoord coord2(20, 10);
@@ -313,13 +313,11 @@ DEFINE_TESTCASE(latlongcoords1, !backend) {
     i1 = g1.begin();
     TEST(i1 != g1.end());
     TEST_EQUAL((*i1).serialise(), c1.serialise());
-    TEST_EQUAL((*i1).serialise(), c1.serialise());
-    ++i1;
+    TEST_EQUAL((*(i1++)).serialise(), c1.serialise());
     TEST(i1 != g1.end());
     TEST_EQUAL((*i1).serialise(), c2.serialise());
     i1 = g1.begin();
-    ++i1;
-    TEST_EQUAL((*i1).serialise(), c2.serialise());
+    TEST_EQUAL((*(++i1)).serialise(), c2.serialise());
     TEST(i1 != g1.end());
     ++i1;
     TEST(i1 == g1.end());

@@ -1,7 +1,7 @@
 /* api_replicate.cc: tests of replication functionality
  *
  * Copyright 2008 Lemur Consulting Ltd
- * Copyright 2009,2010,2011,2012,2013,2014,2015,2016,2017 Olly Betts
+ * Copyright 2009,2010,2011,2012,2013,2014,2015,2016 Olly Betts
  * Copyright 2010 Richard Boulton
  * Copyright 2011 Dan Colish
  *
@@ -46,11 +46,9 @@
 #include <cstdlib>
 #include <string>
 
-#include <stdlib.h> // For setenv() or putenv() or _putenv_s()
+#include <stdlib.h> // For setenv() or putenv()
 
 using namespace std;
-
-#ifdef XAPIAN_HAS_REMOTE_BACKEND
 
 static void rmtmpdir(const string & path) {
     rm_rf(path);
@@ -238,7 +236,7 @@ check_equal_dbs(const string & masterpath, const string & replicapath)
 #if 0 // Dynamic version which we don't currently need.
 static void
 set_max_changesets(int count) {
-#if HAVE_DECL__PUTENV_S
+#ifdef HAVE__PUTENV_S
     _putenv_s("XAPIAN_MAX_CHANGESETS", str(count).c_str());
 #elif defined HAVE_SETENV
     setenv("XAPIAN_MAX_CHANGESETS", str(count).c_str(), 1);
@@ -250,7 +248,7 @@ set_max_changesets(int count) {
 }
 #endif
 
-#if HAVE_DECL__PUTENV_S
+#ifdef HAVE__PUTENV_S
 # define set_max_changesets(N) _putenv_s("XAPIAN_MAX_CHANGESETS", #N)
 #elif defined HAVE_SETENV
 # define set_max_changesets(N) setenv("XAPIAN_MAX_CHANGESETS", #N, 1)
@@ -267,14 +265,11 @@ struct unset_max_changesets_helper_ {
 // testcase, even if this one exits with an exception.
 #define UNSET_MAX_CHANGESETS_AFTERWARDS unset_max_changesets_helper_ ezlxq
 
-#endif
-
 // #######################################################################
 // # Tests start here
 
 // Basic test of replication functionality.
 DEFINE_TESTCASE(replicate1, replicas) {
-#ifdef XAPIAN_HAS_REMOTE_BACKEND
     UNSET_MAX_CHANGESETS_AFTERWARDS;
     string tempdir = ".replicatmp";
     mktmpdir(tempdir);
@@ -346,13 +341,11 @@ DEFINE_TESTCASE(replicate1, replicas) {
     }
 
     rmtmpdir(tempdir);
-#endif
     return true;
 }
 
 // Test replication from a replicated copy.
 DEFINE_TESTCASE(replicate2, replicas) {
-#ifdef XAPIAN_HAS_REMOTE_BACKEND
     SKIP_TEST_FOR_BACKEND("glass"); // Glass doesn't currently support this.
     UNSET_MAX_CHANGESETS_AFTERWARDS;
 
@@ -450,11 +443,9 @@ DEFINE_TESTCASE(replicate2, replicas) {
     }
 
     rmtmpdir(tempdir);
-#endif
     return true;
 }
 
-#ifdef XAPIAN_HAS_REMOTE_BACKEND
 static void
 replicate_with_brokenness(Xapian::DatabaseMaster & master,
 			  Xapian::DatabaseReplica & replica,
@@ -494,11 +485,9 @@ replicate_with_brokenness(Xapian::DatabaseMaster & master,
 	}
     }
 }
-#endif
 
 // Test changesets which are truncated (and therefore invalid).
 DEFINE_TESTCASE(replicate3, replicas) {
-#ifdef XAPIAN_HAS_REMOTE_BACKEND
     UNSET_MAX_CHANGESETS_AFTERWARDS;
     string tempdir = ".replicatmp";
     mktmpdir(tempdir);
@@ -544,13 +533,11 @@ DEFINE_TESTCASE(replicate3, replicas) {
     }
 
     rmtmpdir(tempdir);
-#endif
     return true;
 }
 
 // Tests for max_changesets
 DEFINE_TESTCASE(replicate4, replicas) {
-#ifdef XAPIAN_HAS_REMOTE_BACKEND
     UNSET_MAX_CHANGESETS_AFTERWARDS;
     string tempdir = ".replicatmp";
     mktmpdir(tempdir);
@@ -643,14 +630,12 @@ DEFINE_TESTCASE(replicate4, replicas) {
     }
 
     rmtmpdir(tempdir);
-#endif
     return true;
 }
 
 
 // Tests for max_changesets
 DEFINE_TESTCASE(replicate5, replicas) {
-#ifdef XAPIAN_HAS_REMOTE_BACKEND
     SKIP_TEST_FOR_BACKEND("chert");
     UNSET_MAX_CHANGESETS_AFTERWARDS;
     string tempdir = ".replicatmp";
@@ -777,13 +762,11 @@ DEFINE_TESTCASE(replicate5, replicas) {
     }
 
     rmtmpdir(tempdir);
-#endif
     return true;
 }
 
 /// Test --full-copy option.
 DEFINE_TESTCASE(replicate6, replicas) {
-#ifdef XAPIAN_HAS_REMOTE_BACKEND
     UNSET_MAX_CHANGESETS_AFTERWARDS;
     string tempdir = ".replicatmp";
     mktmpdir(tempdir);
@@ -844,13 +827,11 @@ DEFINE_TESTCASE(replicate6, replicas) {
     }
 
     rmtmpdir(tempdir);
-#endif
     return true;
 }
 
 /// Test healing a corrupt replica (new in 1.3.5).
 DEFINE_TESTCASE(replicate7, replicas) {
-#ifdef XAPIAN_HAS_REMOTE_BACKEND
     UNSET_MAX_CHANGESETS_AFTERWARDS;
     string tempdir = ".replicatmp";
     mktmpdir(tempdir);
@@ -927,6 +908,5 @@ DEFINE_TESTCASE(replicate7, replicas) {
     }
 
     rmtmpdir(tempdir);
-#endif
     return true;
 }

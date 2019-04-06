@@ -41,8 +41,8 @@ Deprecation markers
 At any particular point, some parts of the C++ API will be marked as
 "deprecated".  Deprecated features are annotated in the API headers with macros
 such as ``XAPIAN_DEPRECATED()``, which will cause compilers with appropriate
-support (such as GCC, clang and MSVC) to emit compile-time warnings if these
-features are used.
+support (such as GCC 3.1 or later, and MSVC 7.0 or later) to emit compile-time
+warnings if these features are used.
 
 If a feature is marked with one of these markers, you should avoid using it in
 new code, and should migrate your code to use a replacement when possible.  The
@@ -52,9 +52,7 @@ of this file, will describe possible alternatives to the deprecated feature.
 If you want to disable deprecation warnings temporarily, you can do so
 by passing ``"-DXAPIAN_DEPRECATED(X)=X"`` to the compiler (the quotes are
 needed to protect the brackets from the shell).  If your build system uses
-make, you might do this like so:
-
-.. code-block:: sh
+make, you might do this like so::
 
     make 'CPPFLAGS="-DXAPIAN_DEPRECATED(X)=X"'
 
@@ -495,10 +493,10 @@ Removed Feature name                        Upgrade suggestion and comments
         ``Enquire::get_mset()``
 ------- ----------------------------------- ----------------------------------------------------------------------------------
 1.3.0   ``Xapian::Query::unserialise()``    To be compatible with older and newer Xapian, you can catch both exceptions.
-        throws
-        ``Xapian::SerialisationError`` not
-        ``Xapian::InvalidArgumentError``
-        for errors in serialised data
+	throws
+	``Xapian::SerialisationError`` not
+	``Xapian::InvalidArgumentError``
+	for errors in serialised data
 ------- ----------------------------------- ----------------------------------------------------------------------------------
 1.3.2   The Brass backend                   Use the Glass backend instead.
 ------- ----------------------------------- ----------------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 /** @file api_sorting.cc
  * @brief tests of MSet sorting
  */
-/* Copyright (C) 2007,2008,2009,2012,2017 Olly Betts
+/* Copyright (C) 2007,2008,2009,2012 Olly Betts
  * Copyright (C) 2010 Richard Boulton
  *
  * This program is free software; you can redistribute it and/or modify
@@ -35,21 +35,12 @@ DEFINE_TESTCASE(sortfunctor1, backend && !remote) {
     enquire.set_query(Xapian::Query("woman"));
 
     {
-	static const int keys[] = { 3, 1 };
+	const int keys[] = { 3, 1 };
 	Xapian::MultiValueKeyMaker sorter(keys, keys + 2);
 
 	enquire.set_sort_by_key(&sorter, true);
 	Xapian::MSet mset = enquire.get_mset(0, 10);
 	mset_expect_order(mset, 2, 6, 7, 1, 3, 4, 5, 8, 9);
-
-	for (auto m = mset.begin(); m != mset.end(); ++m) {
-	    const string& data = m.get_document().get_data();
-	    string exp;
-	    exp += data[3];
-	    exp += string(2, '\0');
-	    exp += data[1];
-	    TEST_EQUAL(m.get_sort_key(), exp);
-	}
     }
 
     {
@@ -60,16 +51,6 @@ DEFINE_TESTCASE(sortfunctor1, backend && !remote) {
 	enquire.set_sort_by_key(&sorter, true);
 	Xapian::MSet mset = enquire.get_mset(0, 10);
 	mset_expect_order(mset, 7, 6, 2, 8, 9, 4, 5, 1, 3);
-
-	for (auto m = mset.begin(); m != mset.end(); ++m) {
-	    const string& data = m.get_document().get_data();
-	    string exp;
-	    exp += data[3];
-	    exp += string(2, '\0');
-	    exp += char(0xff - data[1]);
-	    exp += string(2, '\xff');
-	    TEST_EQUAL(m.get_sort_key(), exp);
-	}
     }
 
     {
@@ -81,17 +62,6 @@ DEFINE_TESTCASE(sortfunctor1, backend && !remote) {
 	enquire.set_sort_by_key(&sorter, true);
 	Xapian::MSet mset = enquire.get_mset(0, 10);
 	mset_expect_order(mset, 7, 6, 2, 8, 9, 4, 5, 1, 3);
-
-	for (auto m = mset.begin(); m != mset.end(); ++m) {
-	    const string& data = m.get_document().get_data();
-	    string exp;
-	    exp += string(2, '\0');
-	    exp += data[3];
-	    exp += string(2, '\0');
-	    exp += char(0xff - data[1]);
-	    exp += string(2, '\xff');
-	    TEST_EQUAL(m.get_sort_key(), exp);
-	}
     }
 
     {
@@ -102,16 +72,6 @@ DEFINE_TESTCASE(sortfunctor1, backend && !remote) {
 	enquire.set_sort_by_key(&sorter, true);
 	Xapian::MSet mset = enquire.get_mset(0, 10);
 	mset_expect_order(mset, 8, 9, 4, 5, 1, 3, 7, 6, 2);
-
-	for (auto m = mset.begin(); m != mset.end(); ++m) {
-	    const string& data = m.get_document().get_data();
-	    string exp;
-	    if (data.size() > 10) exp += data[10];
-	    exp += string(2, '\0');
-	    exp += char(0xff - data[1]);
-	    exp += string(2, '\xff');
-	    TEST_EQUAL(m.get_sort_key(), exp);
-	}
     }
 
     return true;
@@ -315,7 +275,7 @@ DEFINE_TESTCASE(sortfunctorempty1, backend && !remote) {
 }
 
 DEFINE_TESTCASE(multivaluekeymaker1, !backend) {
-    static const int keys[] = { 0, 1, 2, 3 };
+    const int keys[] = { 0, 1, 2, 3 };
     Xapian::MultiValueKeyMaker sorter(keys, keys + 4);
 
     Xapian::Document doc;

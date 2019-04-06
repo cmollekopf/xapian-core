@@ -169,7 +169,7 @@ DEFINE_TESTCASE(possubqueries1, writable) {
 DEFINE_TESTCASE(xor3, backend) {
     Xapian::Database db = get_database("apitest_simpledata");
 
-    static const char * const subqs[] = {
+    const char * subqs[] = {
 	"hack", "which", "paragraph", "is", "return"
     };
     // Document where the subqueries run out *does* match XOR:
@@ -273,7 +273,7 @@ DEFINE_TESTCASE(queryintro1, !backend) {
 DEFINE_TESTCASE(phrasealldocs1, backend) {
     Xapian::Database db = get_database("apitest_declen");
     Xapian::Query q;
-    static const char * const phrase[] = { "this", "is", "the" };
+    const char * phrase[] = { "this", "is", "the" };
     q = Xapian::Query(q.OP_AND_NOT,
 	    Xapian::Query("paragraph"),
 	    Xapian::Query(q.OP_PHRASE, phrase, phrase + 3));
@@ -656,9 +656,6 @@ DEFINE_TESTCASE(subdbwithoutpos1, generated) {
     enq3.set_query(q);
     Xapian::MSet mset3 = enq3.get_mset(0, 10);
     TEST_EQUAL(mset3.size(), 3);
-    // Regression test for bug introduced in 1.4.3 which led to a division by
-    // zero and then (at least on Linux) we got 1% here.
-    TEST_EQUAL(mset3[0].get_percent(), 100);
 
     // Regression test for https://trac.xapian.org/ticket/752
     enq3.set_query((Xapian::Query("this") & q) | Xapian::Query("wibble"));

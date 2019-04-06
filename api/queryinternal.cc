@@ -794,31 +794,26 @@ QueryValueRange::postlist(QueryOptimiser *qopt, double factor) const
 	qopt->inc_total_subqs();
     const Xapian::Database::Internal & db = qopt->db;
     const string & lb = db.get_value_lower_bound(slot);
-    if (lb.empty()) {
-	// This should only happen if there are no values in this slot (which
-	// could be because the backend just doesn't support values at all).
-	// If there were values in the slot, the backend should have a
-	// non-empty lower bound, even if it isn't a tight one.
-	AssertEq(db.get_value_freq(slot), 0);
-	RETURN(new EmptyPostList);
-    }
-    if (end < lb) {
-	RETURN(new EmptyPostList);
-    }
-    const string & ub = db.get_value_upper_bound(slot);
-    if (begin > ub) {
-	RETURN(new EmptyPostList);
-    }
-    if (end >= ub) {
-	// If begin <= lb too, then the range check isn't needed, but we do
-	// still need to consider which documents have a value set in this
-	// slot.  If this value is set for all documents, we can replace it
-	// with the MatchAll postlist, which is especially efficient if
-	// there are no gaps in the docids.
-	if (begin <= lb && db.get_value_freq(slot) == db.get_doccount()) {
-	    RETURN(db.open_post_list(string()));
+    // If lb.empty(), the backend doesn't provide value bounds.
+    if (!lb.empty()) {
+	if (end < lb) {
+	    RETURN(new EmptyPostList);
 	}
-	RETURN(new ValueGePostList(&db, slot, begin));
+	const string & ub = db.get_value_upper_bound(slot);
+	if (begin > ub) {
+	    RETURN(new EmptyPostList);
+	}
+	if (end >= ub) {
+	    // If begin <= lb too, then the range check isn't needed, but we do
+	    // still need to consider which documents have a value set in this
+	    // slot.  If this value is set for all documents, we can replace it
+	    // with the MatchAll postlist, which is especially efficient if
+	    // there are no gaps in the docids.
+	    if (begin <= lb && db.get_value_freq(slot) == db.get_doccount()) {
+		RETURN(db.open_post_list(string()));
+	    }
+	    RETURN(new ValueGePostList(&db, slot, begin));
+	}
     }
     RETURN(new ValueRangePostList(&db, slot, begin, end));
 }
@@ -1049,7 +1044,8 @@ QueryWildcard::postlist(QueryOptimiser * qopt, double factor) const
 
     // We build an OP_OR tree for OP_SYNONYM and then wrap it in a
     // SynonymPostList, which supplies the weights.
-    RETURN(qopt->make_synonym_postlist(pl, factor));
+    PostingIterator::Internal * r = qopt->make_synonym_postlist(pl, factor);
+    RETURN(r);
 }
 
 termcount
@@ -1659,13 +1655,8 @@ QueryWindowed::postlist_windowed(Query::op op, AndContext& ctx, QueryOptimiser *
     }
 
     if (!qopt->db.has_positions()) {
-	// No positions in this subdatabase so this matches nothing, which
-	// means the whole andcontext matches nothing.
-	//
-	// Bailing out here means we don't recurse deeper and that means we
-	// don't call QueryOptimiser::inc_total_subqs() for leaf postlists in
-	// the phrase, but at least one shard will count them, and the matcher
-	// takes the highest answer (since 1.4.6).
+	// No positions in this subdatabase so this matches nothing,
+	// which means the whole andcontext matches nothing.
 	ctx.shrink(0);
 	return;
     }

@@ -9,7 +9,9 @@ noinst_PROGRAMS =
 if BUILD_BACKEND_CHERT_OR_GLASS
 bin_PROGRAMS +=\
 	bin/xapian-check\
-	bin/xapian-compact
+	bin/xapian-compact\
+	bin/xapian-replicate\
+	bin/xapian-replicate-server
 
 if BUILD_BACKEND_CHERT
 noinst_PROGRAMS +=\
@@ -20,22 +22,20 @@ if !MAINTAINER_NO_DOCS
 dist_man_MANS +=\
 	bin/xapian-check.1\
 	bin/xapian-compact.1\
-	bin/xapian-delve.1
+	bin/xapian-delve.1\
+	bin/xapian-replicate.1\
+	bin/xapian-replicate-server.1
 endif
 endif
 
 if BUILD_BACKEND_REMOTE
 bin_PROGRAMS +=\
 	bin/xapian-progsrv\
-	bin/xapian-replicate\
-	bin/xapian-replicate-server\
 	bin/xapian-tcpsrv
 
 if !MAINTAINER_NO_DOCS
 dist_man_MANS +=\
 	bin/xapian-progsrv.1\
-	bin/xapian-replicate.1\
-	bin/xapian-replicate-server.1\
 	bin/xapian-tcpsrv.1
 endif
 endif
@@ -54,7 +54,6 @@ bin_xapian_inspect_CPPFLAGS =\
 	-DXAPIAN_REALLY_NO_DEBUG_LOG\
 	-I$(top_srcdir)/backends/glass
 bin_xapian_inspect_SOURCES = bin/xapian-inspect.cc\
-	api/constinfo.cc\
 	api/error.cc\
 	backends/glass/glass_changes.cc\
 	backends/glass/glass_cursor.cc\
@@ -74,11 +73,13 @@ bin_xapian_inspect_SOURCES = bin/xapian-inspect.cc\
 bin_xapian_inspect_LDADD = $(ldflags) libgetopt.la $(XAPIAN_LIBS)
 if USE_PROC_FOR_UUID
 bin_xapian_inspect_SOURCES +=\
+	api/constinfo.cc\
 	common/proc_uuid.cc
 endif
 if USE_WIN32_UUID_API
 bin_xapian_inspect_SOURCES +=\
 	common/win32_uuid.cc
+bin_xapian_inspect_LDADD += -lrpcrt4
 endif
 
 bin_xapian_progsrv_SOURCES = bin/xapian-progsrv.cc

@@ -366,13 +366,12 @@ Database::get_value_lower_bound(Xapian::valueno slot) const
 
     if (rare(internal.empty())) RETURN(string());
 
-    string full_lb;
-    for (auto&& subdb : internal) {
-	string lb = subdb->get_value_lower_bound(slot);
-	if (lb.empty())
-	    continue;
-	if (full_lb.empty() || lb < full_lb)
-	    full_lb = std::move(lb);
+    vector<intrusive_ptr<Database::Internal> >::const_iterator i;
+    i = internal.begin();
+    string full_lb = (*i)->get_value_lower_bound(slot);
+    while (++i != internal.end()) {
+	string lb = (*i)->get_value_lower_bound(slot);
+	if (lb < full_lb) full_lb = lb;
     }
     RETURN(full_lb);
 }
@@ -967,11 +966,7 @@ WritableDatabase::replace_document(const std::string & unique_term,
     // If no unique_term in the database, this is just an add_document().
     if (postit == postlist_end(unique_term)) {
 	// Which database will the next never used docid be in?
-	Xapian::docid did = get_lastdocid() + 1;
-	if (rare(did == 0)) {
-	    throw Xapian::DatabaseError("Run out of docids - you'll have to use copydatabase to eliminate any gaps before you can add more documents");
-	}
-	size_t i = sub_db(did, n_dbs);
+	size_t i = sub_db(get_lastdocid() + 1, n_dbs);
 	RETURN(internal[i]->add_document(document));
     }
 

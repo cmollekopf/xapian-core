@@ -2,7 +2,7 @@
  *
  * Copyright 1999,2000,2001 BrightStation PLC
  * Copyright 2002 Ananova Ltd
- * Copyright 2002,2003,2004,2005,2006,2007,2008,2009,2011,2012,2013,2015,2016,2017 Olly Betts
+ * Copyright 2002,2003,2004,2005,2006,2007,2008,2009,2011,2012,2013,2015,2016 Olly Betts
  * Copyright 2006,2007,2008,2009 Lemur Consulting Ltd
  *
  * This program is free software; you can redistribute it and/or
@@ -106,26 +106,17 @@ DEFINE_TESTCASE(stubdb2, backend && !inmemory && !remote) {
 	<< ' ' << get_database_path("apitest_simpledata") << endl;
     out.close();
 
-    try {
+    {
 	Xapian::Database db(dbpath, Xapian::DB_BACKEND_STUB);
 	Xapian::Enquire enquire(db);
 	enquire.set_query(Xapian::Query("word"));
 	enquire.get_mset(0, 10);
-    } catch (Xapian::FeatureUnavailableError&) {
-#ifdef XAPIAN_HAS_REMOTE_BACKEND
-	throw;
-#endif
     }
-
-    try {
+    {
 	Xapian::Database db(dbpath);
 	Xapian::Enquire enquire(db);
 	enquire.set_query(Xapian::Query("word"));
 	enquire.get_mset(0, 10);
-    } catch (Xapian::FeatureUnavailableError&) {
-#ifdef XAPIAN_HAS_REMOTE_BACKEND
-	throw;
-#endif
     }
 
     out.open(dbpath);
@@ -143,28 +134,21 @@ DEFINE_TESTCASE(stubdb2, backend && !inmemory && !remote) {
 	Xapian::WritableDatabase db(dbpath, Xapian::DB_BACKEND_STUB)
     );
 
-#ifdef XAPIAN_HAS_REMOTE_BACKEND
-# define EXPECTED_EXCEPTION Xapian::DatabaseOpeningError
-#else
-# define EXPECTED_EXCEPTION Xapian::FeatureUnavailableError
-#endif
-
     out.open(dbpath);
     TEST(out.is_open());
     out << "remote foo" << endl;
     out.close();
 
     // Quietly ignored prior to 1.4.1.
-    TEST_EXCEPTION(EXPECTED_EXCEPTION,
+    TEST_EXCEPTION(Xapian::DatabaseOpeningError,
 	Xapian::Database db(dbpath, Xapian::DB_BACKEND_STUB)
     );
 
     // Quietly ignored prior to 1.4.1.
-    TEST_EXCEPTION(EXPECTED_EXCEPTION,
+    TEST_EXCEPTION(Xapian::DatabaseOpeningError,
 	Xapian::WritableDatabase db(dbpath, Xapian::DB_BACKEND_STUB)
     );
 
-#ifdef XAPIAN_HAS_REMOTE_BACKEND
     out.open(dbpath);
     TEST(out.is_open());
     out << "remote [::1]:80" << endl;
@@ -195,7 +179,6 @@ DEFINE_TESTCASE(stubdb2, backend && !inmemory && !remote) {
 	// So we test the message instead of the error string for portability.
 	TEST(e.get_msg().find("host ::1") != string::npos);
     }
-#endif
 
     out.open(dbpath);
     TEST(out.is_open());
@@ -205,13 +188,13 @@ DEFINE_TESTCASE(stubdb2, backend && !inmemory && !remote) {
 
     // 1.4.0 threw:
     // NetworkError: Couldn't resolve host [ (context: remote:tcp([:0)) (No address associated with hostname)
-    TEST_EXCEPTION(EXPECTED_EXCEPTION,
+    TEST_EXCEPTION(Xapian::DatabaseOpeningError,
 	Xapian::Database db(dbpath, Xapian::DB_BACKEND_STUB);
     );
 
     // 1.4.0 threw:
     // NetworkError: Couldn't resolve host [ (context: remote:tcp([:0)) (No address associated with hostname)
-    TEST_EXCEPTION(EXPECTED_EXCEPTION,
+    TEST_EXCEPTION(Xapian::DatabaseOpeningError,
 	Xapian::WritableDatabase db(dbpath, Xapian::DB_BACKEND_STUB);
     );
 
@@ -1692,15 +1675,15 @@ DEFINE_TESTCASE(sortrel1, backend) {
     enquire.set_sort_by_value(1, true);
     enquire.set_query(Xapian::Query("woman"));
 
-    static const Xapian::docid order1[] = { 1,2,3,4,5,6,7,8,9 };
-    static const Xapian::docid order2[] = { 2,1,3,6,5,4,7,9,8 };
-    static const Xapian::docid order3[] = { 3,2,1,6,5,4,9,8,7 };
-    static const Xapian::docid order4[] = { 7,8,9,4,5,6,1,2,3 };
-    static const Xapian::docid order5[] = { 9,8,7,6,5,4,3,2,1 };
-    static const Xapian::docid order6[] = { 7,9,8,6,5,4,2,1,3 };
-    static const Xapian::docid order7[] = { 7,9,8,6,5,4,2,1,3 };
-    static const Xapian::docid order8[] = { 2,6,7,1,5,9,3,4,8 };
-    static const Xapian::docid order9[] = { 7,6,2,9,5,1,8,4,3 };
+    const Xapian::docid order1[] = { 1,2,3,4,5,6,7,8,9 };
+    const Xapian::docid order2[] = { 2,1,3,6,5,4,7,9,8 };
+    const Xapian::docid order3[] = { 3,2,1,6,5,4,9,8,7 };
+    const Xapian::docid order4[] = { 7,8,9,4,5,6,1,2,3 };
+    const Xapian::docid order5[] = { 9,8,7,6,5,4,3,2,1 };
+    const Xapian::docid order6[] = { 7,9,8,6,5,4,2,1,3 };
+    const Xapian::docid order7[] = { 7,9,8,6,5,4,2,1,3 };
+    const Xapian::docid order8[] = { 2,6,7,1,5,9,3,4,8 };
+    const Xapian::docid order9[] = { 7,6,2,9,5,1,8,4,3 };
 
     Xapian::MSet mset;
     size_t i;
@@ -1817,7 +1800,7 @@ DEFINE_TESTCASE(netstats1, remote) {
     BackendManagerLocal local_manager;
     local_manager.set_datadir(test_driver::get_srcdir() + "/testdata/");
 
-    static const char * const words[] = { "paragraph", "word" };
+    const char * words[] = { "paragraph", "word" };
     Xapian::Query query(Xapian::Query::OP_OR, words, words + 2);
     const size_t MSET_SIZE = 10;
 
@@ -1918,9 +1901,7 @@ class MyWeight : public Xapian::Weight {
 DEFINE_TESTCASE(userweight1, backend && !remote) {
     Xapian::Enquire enquire(get_database("apitest_simpledata"));
     enquire.set_weighting_scheme(MyWeight());
-    static const char * const query[] = {
-	"this", "line", "paragraph", "rubbish"
-    };
+    const char * query[] = { "this", "line", "paragraph", "rubbish" };
     enquire.set_query(Xapian::Query(Xapian::Query::OP_OR, query,
 				    query + sizeof(query) / sizeof(query[0])));
     Xapian::MSet mymset1 = enquire.get_mset(0, 100);

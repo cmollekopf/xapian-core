@@ -51,6 +51,7 @@
 #include <iostream>
 
 #include <cstring>
+#include <cstdio> // For sprintf() on __WIN32__ or cygwin.
 #include <cstdlib>
 #include <sys/types.h>
 
@@ -129,8 +130,9 @@ TcpServer::get_listening_socket(const std::string & host, int port,
 	// the same port, so we guard against that by using a named win32 mutex
 	// object (and we create it in the 'Global namespace' so that this
 	// still works in a Terminal Services environment).
-	string name = "Global\\xapian-tcpserver-listening-" + str(port);
-	if ((mutex = CreateMutex(NULL, TRUE, name.c_str())) == NULL) {
+	char name[64];
+	sprintf(name, "Global\\xapian-tcpserver-listening-%d", port);
+	if ((mutex = CreateMutex(NULL, TRUE, name)) == NULL) {
 	    // We failed to create the mutex, probably the error is
 	    // ERROR_ACCESS_DENIED, which simply means that TcpServer is
 	    // already running on this port but as a different user.

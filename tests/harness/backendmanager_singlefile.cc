@@ -28,6 +28,8 @@
 #include "unixcmds.h"
 
 #include <cstdio> // For rename().
+#include <cstring>
+#include "safeerrno.h"
 
 using namespace std;
 
@@ -45,6 +47,8 @@ BackendManagerSingleFile::get_dbtype() const
 {
     return "singlefile_" + subtype;
 }
+
+#define NUMBER_OF_SUB_DBS 2
 
 string
 BackendManagerSingleFile::createdb_singlefile(const vector<string> & files)

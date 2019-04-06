@@ -282,7 +282,7 @@ serialise_document(const Xapian::Document &doc)
 	Assert(x == 0);
 	--n;
     }
-    AssertEq(n, 0);
+    Assert(n == 0);
 
     result += doc.get_data();
     return result;

@@ -24,6 +24,7 @@
 #include "maxpostlist.h"
 
 #include "debuglog.h"
+#include "multimatch.h"
 #include "omassert.h"
 
 using namespace std;
@@ -43,7 +44,7 @@ MaxPostList::get_termfreq_min() const
 {
     Xapian::doccount res = plist[0]->get_termfreq_min();
     for (size_t i = 1; i < n_kids; ++i) {
-	res = max(res, plist[i]->get_termfreq_min());
+	res = std::max(res, plist[i]->get_termfreq_min());
     }
     return res;
 }
@@ -171,7 +172,7 @@ MaxPostList::get_weight() const
     double res = 0.0;
     for (size_t i = 0; i < n_kids; ++i) {
 	if (plist[i]->get_docid() == did)
-	    res = max(res, plist[i]->get_weight());
+	    res = std::max(res, plist[i]->get_weight());
     }
     return res;
 }
@@ -187,7 +188,7 @@ MaxPostList::recalc_maxweight()
 {
     max_cached = plist[0]->recalc_maxweight();
     for (size_t i = 1; i < n_kids; ++i) {
-	max_cached = max(max_cached, plist[i]->recalc_maxweight());
+	max_cached = std::max(max_cached, plist[i]->recalc_maxweight());
     }
     return max_cached;
 }

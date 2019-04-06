@@ -208,8 +208,8 @@ Database::compact_(const string * output_ptr, int fd, unsigned flags,
 	string srcdir;
 	int type = it->get_backend_info(&srcdir);
 	// Check destdir isn't the same as any source directory, unless it
-	// is a stub database or we're compacting to an fd.
-	if (!compact_to_stub && !destdir.empty() && srcdir == destdir)
+	// is a stub database.
+	if (!compact_to_stub && srcdir == destdir)
 	    throw Xapian::InvalidArgumentError("destination may not be the same as any source database, unless it is a stub database");
 	switch (type) {
 	    case BACKEND_CHERT:
@@ -427,7 +427,11 @@ Database::compact_(const string * output_ptr, int fd, unsigned flags,
 	new_stub_file += "/new_stub.tmp";
 	{
 	    ofstream new_stub(new_stub_file.c_str());
-	    size_t slash = destdir.find_last_of(DIR_SEPS);
+#ifndef __WIN32__
+	    size_t slash = destdir.find_last_of('/');
+#else
+	    size_t slash = destdir.find_last_of("/\\");
+#endif
 	    new_stub << "auto " << destdir.substr(slash + 1) << '\n';
 	}
 	if (!io_tmp_rename(new_stub_file, stub_file)) {

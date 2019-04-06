@@ -306,11 +306,12 @@ static size_t
 check_db_table_(const string & filename, int opts, std::ostream *out,
 		backend_type backend)
 {
-    size_t p = filename.find_last_of(DIR_SEPS);
-    // If we found a directory separator, advance p to the next character.  If
-    // we didn't, incrementing string::npos will give us 0, which is what we
-    // want.
-    ++p;
+    size_t p = filename.find_last_of('/');
+#if defined __WIN32__ || defined __OS2__
+    if (p == string::npos) p = 0;
+    p = filename.find_last_of('\\', p);
+#endif
+    if (p == string::npos) p = 0; else ++p;
 
     string dir(filename, 0, p);
 

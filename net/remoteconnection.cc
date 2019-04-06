@@ -1,7 +1,7 @@
 /** @file  remoteconnection.cc
  *  @brief RemoteConnection class used by the remote backend.
  */
-/* Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2017 Olly Betts
+/* Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,2015 Olly Betts
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,11 +31,7 @@
 
 #include <algorithm>
 #include <climits>
-#include <cstdint>
 #include <string>
-#ifdef __WIN32__
-# include <type_traits>
-#endif
 
 #include "debuglog.h"
 #include "fd.h"
@@ -69,8 +65,7 @@ throw_network_error_insane_message_length()
 inline void
 update_overlapped_offset(WSAOVERLAPPED & overlapped, DWORD n)
 {
-    // Signed overflow is undefined so check DWORD is unsigned.
-    static_assert(std::is_unsigned<DWORD>::value, "Type DWORD should be unsigned");
+    STATIC_ASSERT_UNSIGNED_TYPE(DWORD); // signed overflow is undefined.
     overlapped.Offset += n;
     if (overlapped.Offset < n) ++overlapped.OffsetHigh;
 }
@@ -189,11 +184,8 @@ RemoteConnection::read_at_least(size_t min_len, double end_time)
 	    if (select_result == 0)
 		throw Xapian::NetworkTimeoutError("Timeout expired while trying to read", context);
 
-	    // EINTR means select was interrupted by a signal.  The Linux
-	    // select(2) man page says: "Portable programs may wish to check
-	    // for EAGAIN and loop, just as with EINTR" and that seems to be
-	    // necessary for cygwin at least.
-	    if (errno != EINTR && errno != EAGAIN)
+	    // EINTR means select was interrupted by a signal.
+	    if (errno != EINTR)
 		throw Xapian::NetworkError("select failed during read", context, errno);
 	}
     }
@@ -525,15 +517,16 @@ int
 RemoteConnection::get_message_chunked(double end_time)
 {
     LOGCALL(REMOTE, int, "RemoteConnection::get_message_chunked", end_time);
+    typedef UNSIGNED_OFF_T uoff_t;
 
     if (fdin == -1)
 	throw_database_closed();
 
     if (!read_at_least(2, end_time))
 	RETURN(-1);
-    uint_least64_t len = static_cast<unsigned char>(buffer[1]);
+    uoff_t len = static_cast<unsigned char>(buffer[1]);
     if (len != 0xff) {
-	chunked_data_left = off_t(len);
+	chunked_data_left = len;
 	char type = buffer[0];
 	buffer.erase(0, 2);
 	RETURN(type);
@@ -548,28 +541,37 @@ RemoteConnection::get_message_chunked(double end_time)
 	// Allow at most 63 bits for message lengths - it's neatly a multiple
 	// of 7 bits and anything longer than this is almost certainly a
 	// corrupt value.
-	// The value also needs to be representable as an
-	// off_t (which is a signed type), so use that size if it is smaller.
-	const int SHIFT_LIMIT = 63;
-	if (rare(i == buffer.end() || shift >= SHIFT_LIMIT)) {
+#if SIZEOF_OFF_T < 8
+	// The value also needs to be representable as an off_t, which is a
+	// signed type.
+	if (rare(i == buffer.end() || shift >= SIZEOF_OFF_T * CHAR_BIT - 1)) {
 	    // Something is very wrong...
 	    throw_network_error_insane_message_length();
 	}
+#else
+	if (rare(i == buffer.end() || shift >= 63)) {
+	    // Something is very wrong...
+	    throw_network_error_insane_message_length();
+	}
+#endif
 	ch = *i++;
-	uint_least64_t bits = ch & 0x7f;
+	uoff_t bits = ch & 0x7f;
+#if SIZEOF_OFF_T < 8
+	if (shift > (SIZEOF_OFF_T * CHAR_BIT - 7)) {
+	    if (bits >> (shift - (SIZEOF_OFF_T * CHAR_BIT - 7))) {
+		// Too large for off_t.
+		throw_network_error_insane_message_length();
+	    }
+	}
+#endif
 	len |= bits << shift;
 	shift += 7;
     } while ((ch & 0x80) == 0);
     len += 255;
+    if (rare(off_t(len) < 0))
+	throw_network_error_insane_message_length();
 
-    chunked_data_left = off_t(len);
-    if (sizeof(off_t) * CHAR_BIT < 63) {
-	// Check that the value of len fits in an off_t without loss.
-	if (rare(uint_least64_t(chunked_data_left) != len)) {
-	    throw_network_error_insane_message_length();
-	}
-    }
-
+    chunked_data_left = len;
     unsigned char type = buffer[0];
     size_t header_len = (i - buffer.begin());
     buffer.erase(0, header_len);

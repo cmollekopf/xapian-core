@@ -40,6 +40,7 @@ lib_src +=\
 	api/query.cc\
 	api/queryinternal.cc\
 	api/registry.cc\
+	api/replication.cc\
 	api/smallvector.cc\
 	api/sortable-serialise.cc\
 	api/termiterator.cc\
@@ -48,8 +49,3 @@ lib_src +=\
 	api/valuerangeproc.cc\
 	api/valuesetmatchdecider.cc\
 	api/vectortermlist.cc
-
-if BUILD_BACKEND_REMOTE
-lib_src +=\
-	api/replication.cc
-endif

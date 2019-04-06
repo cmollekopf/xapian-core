@@ -17,7 +17,6 @@ noinst_HEADERS +=\
 	common/keyword.h\
 	common/log2.h\
 	common/msvc_dirent.h\
-	common/msvcignoreinvalidparam.h\
 	common/noreturn.h\
 	common/omassert.h\
 	common/output.h\
@@ -27,6 +26,7 @@ noinst_HEADERS +=\
 	common/pretty.h\
 	common/proc_uuid.h\
 	common/realtime.h\
+	common/remoteprotocol.h\
 	common/replicate_utils.h\
 	common/replicationprotocol.h\
 	common/safedirent.h\
@@ -79,6 +79,7 @@ endif
 if USE_WIN32_UUID_API
 lib_src +=\
 	common/win32_uuid.cc
+libxapian_la_LDFLAGS += -lrpcrt4
 endif
 
 if USE_PROC_FOR_UUID

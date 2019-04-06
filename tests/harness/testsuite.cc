@@ -39,7 +39,6 @@
 #endif
 
 #include <algorithm>
-#include <iomanip>
 #include <iostream>
 #include <set>
 
@@ -125,15 +124,21 @@ test_driver::get_srcdir()
     char *p = getenv("srcdir");
     if (p != NULL) return string(p);
 
+#ifdef __WIN32__
+    // The path on argv[0] will always use \ for the directory separator.
+    const char ARGV0_SEP = '\\';
+#else
+    const char ARGV0_SEP = '/';
+#endif
     // Default srcdir to the pathname of argv[0].
     string srcdir(argv0);
-    string::size_type i = srcdir.find_last_of(DIR_SEPS);
+    string::size_type i = srcdir.find_last_of(ARGV0_SEP);
     string srcfile;
     if (i != string::npos) {
 	srcfile.assign(srcdir, i + 1, string::npos);
 	srcdir.erase(i);
 	// libtool may put the real executable in .libs.
-	i = srcdir.find_last_of(DIR_SEPS);
+	i = srcdir.find_last_of(ARGV0_SEP);
 	if (srcdir.substr(i + 1) == ".libs") {
 	    srcdir.erase(i);
 	    // And it may have an "lt-" prefix.
@@ -164,7 +169,6 @@ test_driver::get_srcdir()
 test_driver::test_driver(const test_desc *tests_)
 	: out(cout.rdbuf()), tests(tests_)
 {
-    tout << boolalpha;
 }
 
 static SIGJMP_BUF jb;
@@ -762,7 +766,7 @@ test_driver::parse_command_line(int argc, char **argv)
     }
 #endif
 
-    static const struct option long_opts[] = {
+    const struct option long_opts[] = {
 	{"verbose",		no_argument, 0, 'v'},
 	{"abort-on-error",	no_argument, 0, 'o'},
 	{"help",		no_argument, 0, 'h'},

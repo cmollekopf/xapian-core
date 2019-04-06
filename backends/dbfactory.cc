@@ -1,7 +1,7 @@
 /** @file dbfactory.cc
  * @brief Database factories for non-remote databases.
  */
-/* Copyright 2002,2003,2004,2005,2006,2007,2008,2009,2011,2012,2013,2014,2015,2016,2017 Olly Betts
+/* Copyright 2002,2003,2004,2005,2006,2007,2008,2009,2011,2012,2013,2014,2015,2016 Olly Betts
  * Copyright 2008 Lemur Consulting Ltd
  *
  * This program is free software; you can redistribute it and/or
@@ -126,28 +126,24 @@ open_stub(Database &db, const string &file)
 	    continue;
 	}
 
-	if (type == "chert") {
 #ifdef XAPIAN_HAS_CHERT_BACKEND
+	if (type == "chert") {
 	    resolve_relative_path(line, file);
 	    db.add_database(Database(new ChertDatabase(line)));
 	    continue;
-#else
-	    throw FeatureUnavailableError("Chert backend disabled");
-#endif
 	}
+#endif
 
-	if (type == "glass") {
 #ifdef XAPIAN_HAS_GLASS_BACKEND
+	if (type == "glass") {
 	    resolve_relative_path(line, file);
 	    db.add_database(Database(new GlassDatabase(line)));
 	    continue;
-#else
-	    throw FeatureUnavailableError("Glass backend disabled");
-#endif
 	}
+#endif
 
-	if (type == "remote" && !line.empty()) {
 #ifdef XAPIAN_HAS_REMOTE_BACKEND
+	if (type == "remote" && !line.empty()) {
 	    if (line[0] == ':') {
 		// prog
 		// FIXME: timeouts
@@ -181,19 +177,15 @@ open_stub(Database &db, const string &file)
 		    continue;
 		}
 	    }
-#else
-	    throw FeatureUnavailableError("Remote backend disabled");
-#endif
 	}
+#endif
 
-	if (type == "inmemory" && line.empty()) {
 #ifdef XAPIAN_HAS_INMEMORY_BACKEND
+	if (type == "inmemory" && line.empty()) {
 	    db.add_database(Database(string(), DB_BACKEND_INMEMORY));
 	    continue;
-#else
-	    throw FeatureUnavailableError("Inmemory backend disabled");
-#endif
 	}
+#endif
 
 	if (type == "flint") {
 	    throw FeatureUnavailableError("Flint backend no longer supported");
@@ -253,28 +245,24 @@ open_stub(WritableDatabase &db, const string &file, int flags)
 	    continue;
 	}
 
-	if (type == "chert") {
 #ifdef XAPIAN_HAS_CHERT_BACKEND
+	if (type == "chert") {
 	    resolve_relative_path(line, file);
 	    db.add_database(WritableDatabase(line, flags|DB_BACKEND_CHERT));
 	    continue;
-#else
-	    throw FeatureUnavailableError("Chert backend disabled");
-#endif
 	}
+#endif
 
-	if (type == "glass") {
 #ifdef XAPIAN_HAS_GLASS_BACKEND
+	if (type == "glass") {
 	    resolve_relative_path(line, file);
 	    db.add_database(WritableDatabase(line, flags|DB_BACKEND_GLASS));
 	    continue;
-#else
-	    throw FeatureUnavailableError("Glass backend disabled");
-#endif
 	}
+#endif
 
-	if (type == "remote" && !line.empty()) {
 #ifdef XAPIAN_HAS_REMOTE_BACKEND
+	if (type == "remote") {
 	    if (line[0] == ':') {
 		// prog
 		// FIXME: timeouts
@@ -308,19 +296,15 @@ open_stub(WritableDatabase &db, const string &file, int flags)
 		    continue;
 		}
 	    }
-#else
-	    throw FeatureUnavailableError("Remote backend disabled");
-#endif
 	}
+#endif
 
-	if (type == "inmemory" && line.empty()) {
 #ifdef XAPIAN_HAS_INMEMORY_BACKEND
+	if (type == "inmemory" && line.empty()) {
 	    db.add_database(WritableDatabase(string(), DB_BACKEND_INMEMORY));
 	    continue;
-#else
-	    throw FeatureUnavailableError("Inmemory backend disabled");
-#endif
 	}
+#endif
 
 	if (type == "flint") {
 	    throw FeatureUnavailableError("Flint backend no longer supported");
@@ -378,9 +362,7 @@ Database::Database(const string &path, int flags)
 
     if (S_ISREG(statbuf.st_mode)) {
 	// Could be a stub database file, or a single file glass database.
-
-	// Initialise to avoid bogus warning from GCC 4.9.2 with -Os.
-	int fd = -1;
+	int fd;
 	if (check_if_single_file_db(statbuf, path, &fd)) {
 #ifdef XAPIAN_HAS_GLASS_BACKEND
 	    // Single file glass format.

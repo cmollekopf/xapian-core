@@ -505,16 +505,6 @@ MSetIterator::get_collapse_count() const
 }
 
 string
-MSetIterator::get_sort_key() const
-{
-    Assert(mset.internal.get());
-    Xapian::doccount size = mset.internal->items.size();
-    Xapian::doccount index = size - off_from_end;
-    AssertRel(index,<,size);
-    return mset.internal->items[index].sort_key;
-}
-
-string
 MSetIterator::get_description() const
 {
     return "Xapian::MSetIterator(" + str(mset.size() - off_from_end) + ")";
@@ -572,9 +562,9 @@ Enquire::Internal::get_mset(Xapian::doccount first, Xapian::doccount maxitems,
     {
 	Xapian::doccount docs = db.get_doccount();
 	first = min(first, docs);
-	maxitems = min(maxitems, docs - first);
+	maxitems = min(maxitems, docs);
 	check_at_least = min(check_at_least, docs);
-	check_at_least = max(check_at_least, first + maxitems);
+	check_at_least = max(check_at_least, maxitems);
     }
 
     AutoPtr<Xapian::Weight::Internal> stats(new Xapian::Weight::Internal);

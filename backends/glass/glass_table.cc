@@ -1639,7 +1639,6 @@ GlassTable::read_root()
 	    /* writing - */
 	    SET_REVISION(p, revision_number + 1);
 	    C[0].set_n(free_list.get_block(this, block_size));
-	    C[0].rewrite = true;
 	}
     } else {
 	/* using a root block stored on disk */
@@ -1854,7 +1853,9 @@ GlassTable::flush_db()
 	}
     }
 
-    faked_root_block = false;
+    if (Btree_modified) {
+	faked_root_block = false;
+    }
 }
 
 void
@@ -1943,13 +1944,6 @@ GlassTable::cancel(const RootInfo & root_info, glass_revision_number_t rev)
     item_count =       root_info.get_num_entries();
     faked_root_block = root_info.get_root_is_fake();
     sequential =       root_info.get_sequential();
-    const string & fl_serialised = root_info.get_free_list();
-    if (!fl_serialised.empty()) {
-	if (!free_list.unpack(fl_serialised))
-	    throw Xapian::DatabaseCorruptError("Bad freelist metadata");
-    } else {
-	free_list.reset();
-    }
 
     Btree_modified = false;
 

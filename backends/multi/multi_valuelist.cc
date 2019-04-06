@@ -44,7 +44,7 @@ struct SubValueList {
 
     void skip_to(Xapian::docid did, size_t multiplier) {
 	// Translate did from merged docid.
-	did = (did - 1) / multiplier + 1 + ((did - 1) % multiplier > db_idx);
+	did = (did - db_idx - 2 + multiplier) / multiplier + 1;
 	valuelist->skip_to(did);
     }
 
@@ -137,8 +137,8 @@ void
 MultiValueList::next()
 {
     if (current_docid == 0) {
-	// Make valuelists into a heap so that the one with the earliest
-	// sorting docid is at the top of the heap.
+	// Make valuelists into a heap so that the one (or one of the ones) with
+	// earliest sorting term is at the top of the heap.
 	vector<SubValueList *>::iterator i = valuelists.begin();
 	while (i != valuelists.end()) {
 	    (*i)->next();

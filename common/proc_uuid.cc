@@ -5,7 +5,7 @@
  * cross-build a UUID library.
  */
 /* Copyright (C) 2008 Lemur Consulting Ltd
- * Copyright (C) 2013,2015,2016,2017 Olly Betts
+ * Copyright (C) 2013,2015,2016 Olly Betts
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,16 +48,17 @@ const size_t UUID_STRING_SIZE = 36;
 void
 uuid_generate(uuid_t uu)
 {
-    char buf[UUID_STRING_SIZE];
+    char buf[37];
     int fd = open("/proc/sys/kernel/random/uuid", O_RDONLY);
     if (rare(fd == -1)) {
 	throw Xapian::DatabaseCreateError("Opening UUID generator failed", errno);
     }
-    if (read(fd, buf, UUID_STRING_SIZE) != UUID_STRING_SIZE) {
+    if (read(fd, buf, 36) != 36) {
 	close(fd);
 	throw Xapian::DatabaseCreateError("Generating UUID failed");
     }
     close(fd);
+    buf[36] = '\0';
     uuid_parse(buf, uu);
 }
 
@@ -74,13 +75,11 @@ uuid_parse(const char * in, uuid_t uu)
 void uuid_unparse_lower(const uuid_t uu, char * out)
 {
     for (unsigned i = 0; i != UUID_SIZE; ++i) {
-	unsigned char ch = uu[i];
-	*out++ = "0123456789abcdef"[ch >> 4];
-	*out++ = "0123456789abcdef"[ch & 0x0f];
+	sprintf(out, "%02x", uu[i]);
+	out += 2;
 	if ((0x2a8 >> i) & 1)
 	   *out++ = '-';
     }
-    *out = '\0';
 }
 
 void uuid_clear(uuid_t uu)

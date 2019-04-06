@@ -36,6 +36,7 @@ using namespace std;
 #include "testsuite.h"
 #include "testutils.h"
 
+#include "omassert.h"
 #include "pack.h"
 #include "str.h"
 
@@ -260,6 +261,58 @@ static bool test_temporarydtor1()
     TEST_EQUAL(TempDtorTest::count, 0);
     TempDtorTest::factory();
     TEST_EQUAL(TempDtorTest::count, 0);
+
+    return true;
+}
+
+static bool test_static_assert1()
+{
+    // These tests aren't so useful now we're using C++11 static_assert(),
+    // but it's not a bad idea to sanity check it.
+    static_assert(true, "true");
+    static_assert(1, "1");
+    static_assert(-1, "-1");
+    static_assert(42, "42");
+    static_assert(sizeof(char) == 1, "sizeof(char) == 1");
+
+    // FIXME: We should test cases which should fail, but these are hard to
+    // check with our current test framework.
+
+    STATIC_ASSERT_UNSIGNED_TYPE(bool);
+    STATIC_ASSERT_UNSIGNED_TYPE(unsigned char);
+    STATIC_ASSERT_UNSIGNED_TYPE(unsigned short);
+    STATIC_ASSERT_UNSIGNED_TYPE(unsigned int);
+    STATIC_ASSERT_UNSIGNED_TYPE(unsigned long);
+
+    // FIXME: We should test cases which should fail, but these are hard to
+    // check with our current test framework.
+
+    STATIC_ASSERT_TYPE_DOMINATES(unsigned long, unsigned long);
+    STATIC_ASSERT_TYPE_DOMINATES(unsigned int, unsigned int);
+    STATIC_ASSERT_TYPE_DOMINATES(unsigned short, unsigned short);
+    STATIC_ASSERT_TYPE_DOMINATES(unsigned char, unsigned char);
+
+    STATIC_ASSERT_TYPE_DOMINATES(long, long);
+    STATIC_ASSERT_TYPE_DOMINATES(int, int);
+    STATIC_ASSERT_TYPE_DOMINATES(short, short);
+    STATIC_ASSERT_TYPE_DOMINATES(signed char, signed char);
+
+    STATIC_ASSERT_TYPE_DOMINATES(char, char);
+
+    STATIC_ASSERT_TYPE_DOMINATES(unsigned long, unsigned int);
+    STATIC_ASSERT_TYPE_DOMINATES(unsigned int, unsigned short);
+    STATIC_ASSERT_TYPE_DOMINATES(unsigned short, unsigned char);
+
+    STATIC_ASSERT_TYPE_DOMINATES(long, int);
+    STATIC_ASSERT_TYPE_DOMINATES(int, short);
+    STATIC_ASSERT_TYPE_DOMINATES(short, signed char);
+
+    STATIC_ASSERT_TYPE_DOMINATES(long, unsigned char);
+    STATIC_ASSERT_TYPE_DOMINATES(int, unsigned char);
+    STATIC_ASSERT_TYPE_DOMINATES(short, unsigned char);
+
+    // FIXME: We should test cases which should fail, but these are hard to
+    // check with our current test framework.
 
     return true;
 }
@@ -569,6 +622,7 @@ static const test_desc tests[] = {
     TESTCASE(autoptr1),
     TESTCASE(stringcomp1),
     TESTCASE(temporarydtor1),
+    TESTCASE(static_assert1),
     TESTCASE(pack_uint_preserving_sort1),
     TESTCASE(pack_uint_preserving_sort2),
     TESTCASE(chartype1),

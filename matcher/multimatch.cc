@@ -380,7 +380,7 @@ MultiMatch::get_mset(Xapian::doccount first, Xapian::doccount maxitems,
 		     const Xapian::KeyMaker *sorter)
 {
     LOGCALL_VOID(MATCH, "MultiMatch::get_mset", first | maxitems | check_at_least | Literal("mset") | stats | Literal("mdecider") | Literal("sorter"));
-    AssertRel(check_at_least,>=,first + maxitems);
+    AssertRel(check_at_least,>=,maxitems);
 
     if (query.empty()) {
 	mset = Xapian::MSet();
@@ -418,13 +418,7 @@ MultiMatch::get_mset(Xapian::doccount first, Xapian::doccount maxitems,
     // documents it returns (because it wasn't asked for more documents).
     Xapian::doccount definite_matches_not_seen = 0;
     for (size_t i = 0; i != leaves.size(); ++i) {
-	// Pick the highest total subqueries answer amongst the subdatabases,
-	// as the query to postlist conversion doesn't recurse into positional
-	// queries for shards that don't have positional data when at least one
-	// other shard does.
-	Xapian::termcount total_subqs_i = 0;
-	PostList * pl = leaves[i]->get_postlist(this, &total_subqs_i);
-	total_subqs = max(total_subqs, total_subqs_i);
+	PostList * pl = leaves[i]->get_postlist(this, &total_subqs);
 	if (is_remote[i]) {
 	    if (pl->get_termfreq_min() > first + maxitems) {
 		LOGLINE(MATCH, "Found " <<
@@ -613,8 +607,8 @@ MultiMatch::get_mset(Xapian::doccount first, Xapian::doccount maxitems,
 	vsdoc.set_document(did);
 	LOGLINE(MATCH, "Candidate document id " << did << " wt " << wt);
 	Xapian::Internal::MSetItem new_item(wt, did);
-	if (check_at_least > first + maxitems && timeout.timed_out()) {
-	    check_at_least = first + maxitems;
+	if (check_at_least > maxitems && timeout.timed_out()) {
+	    check_at_least = maxitems;
 	}
 
 	if (sort_by != REL) {
@@ -758,10 +752,7 @@ MultiMatch::get_mset(Xapian::doccount first, Xapian::doccount maxitems,
 			 MSetCmp>(items.begin(), items.end(), mcmp);
 		items.pop_back();
 
-		if (!items.empty()) {
-		    // In the get_mset(0, 0, X) (X > 0) case just don't update min_item.
-		    min_item = items.front();
-		}
+		min_item = items.front();
 		if (sort_by == REL || sort_by == REL_VAL) {
 		    if (docs_matched >= check_at_least) {
 			if (sort_by == REL) {

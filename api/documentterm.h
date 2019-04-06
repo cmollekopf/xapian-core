@@ -51,13 +51,6 @@ class OmDocumentTerm {
      */
     Xapian::termcount wdf;
 
-    /** Flag to indicate if this term was deleted from this document.
-     *
-     *  We flag entries as deleted instead of actually deleting them to avoid
-     *  invalidating existing TermIterator objects.
-     */
-    bool deleted = false;
-
     typedef vector<Xapian::termpos> term_positions;
 
     /** Positional information.
@@ -75,29 +68,17 @@ class OmDocumentTerm {
      */
     term_positions positions;
 
-    void remove() {
-	positions.clear();
-	deleted = true;
-    }
-
-    /** Add a position.
+    /** Add a position to the position list.
      *
-     *  If @a termpos is already present, this is a no-op.
+     *  This adds an entry to the list of positions, unless
+     *  there is already one for the specified position.
      *
-     *  @param wdf_inc  wdf increment
-     *  @param termpos	Position to add
+     *  This does not change the value of the wdf.
      *
-     *  @return true if the term was flagged as deleted before the operation.
+     *  @param tpos The position within the document at which the term
+     *              occurs.
      */
-    bool add_position(Xapian::termcount wdf_inc, Xapian::termpos termpos);
-
-    /** Append a position.
-     *
-     *  The position must be >= the largest currently in the list.
-     */
-    void append_position(Xapian::termpos termpos) {
-	positions.push_back(termpos);
-    }
+    void add_position(Xapian::termpos tpos);
 
     /** Remove an entry from the position list.
      *
@@ -110,35 +91,20 @@ class OmDocumentTerm {
      */
     void remove_position(Xapian::termpos tpos);
 
-    /** Increase within-document frequency.
-     *
-     *  @return true if the term was flagged as deleted before the operation.
-     */
-    bool increase_wdf(Xapian::termcount delta) {
-	if (rare(deleted)) {
-	    deleted = false;
-	    wdf = delta;
-	    return true;
-	}
-	wdf += delta;
-	return false;
-    }
+    /// Increase the wdf
+    void inc_wdf(Xapian::termcount inc) { wdf += inc; }
 
-    /// Decrease within-document frequency.
-    void decrease_wdf(Xapian::termcount delta) {
-	// Saturating arithmetic - don't let the wdf go below zero.
-	if (wdf >= delta) {
-	    wdf -= delta;
-	} else {
+    /// Decrease the wdf
+    void dec_wdf(Xapian::termcount dec) {
+	if (wdf <= dec) {
 	    wdf = 0;
+	} else {
+	    wdf -= dec;
 	}
     }
 
     /// Get the wdf
     Xapian::termcount get_wdf() const { return wdf; }
-
-    /// Is this term flagged as deleted?
-    bool is_deleted() const { return deleted; }
 
     /// Return a string describing this object.
     string get_description() const;

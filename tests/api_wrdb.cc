@@ -97,9 +97,7 @@ DEFINE_TESTCASE(adddoc1, writable) {
 }
 
 // test that removing a posting and removing a term works
-DEFINE_TESTCASE(adddoc2, writable && !multi) {
-    // FIXME: With multi, get_termfreq() on a TermIterator from a Document
-    // currently returns the termfreq for just the shard the doc is in.
+DEFINE_TESTCASE(adddoc2, writable) {
     Xapian::WritableDatabase db = get_writable_database();
 
     Xapian::Document doc1;
@@ -323,10 +321,7 @@ DEFINE_TESTCASE(adddoc4, writable) {
 
 // Test adding a document, and checking that it got added correctly.
 // This testcase used to be adddoc2 in quartztest.
-DEFINE_TESTCASE(adddoc5, writable && !multi) {
-    // FIXME: With multi, get_termfreq() on a TermIterator from a Document
-    // currently returns the termfreq for just the shard the doc is in.
-
+DEFINE_TESTCASE(adddoc5, writable) {
     // Inmemory doesn't support get_writable_database_as_database().
     SKIP_TEST_FOR_BACKEND("inmemory");
 
@@ -1379,7 +1374,7 @@ DEFINE_TESTCASE(phraseorneartoand1, writable) {
     Xapian::Enquire enquire(db);
     Xapian::MSet mymset;
 
-    static const char * const q1[] = { "all", "1" };
+    const char * q1[] = { "all", "1" };
     enquire.set_query(Xapian::Query(Xapian::Query::OP_PHRASE, q1, q1 + 2));
     mymset = enquire.get_mset(0, 10);
     TEST_EQUAL(2, mymset.size());
@@ -1388,7 +1383,7 @@ DEFINE_TESTCASE(phraseorneartoand1, writable) {
     mymset = enquire.get_mset(0, 10);
     TEST_EQUAL(2, mymset.size());
 
-    static const char * const q2[] = { "1", "2" };
+    const char * q2[] = { "1", "2" };
     enquire.set_query(Xapian::Query(Xapian::Query::OP_PHRASE, q2, q2 + 2));
     mymset = enquire.get_mset(0, 10);
     TEST_EQUAL(0, mymset.size());

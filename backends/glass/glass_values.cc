@@ -1,7 +1,7 @@
 /** @file glass_values.cc
  * @brief GlassValueManager class
  */
-/* Copyright (C) 2008,2009,2010,2011,2012,2016,2017 Olly Betts
+/* Copyright (C) 2008,2009,2010,2011,2012,2016 Olly Betts
  * Copyright (C) 2008,2009 Lemur Consulting Ltd
  *
  * This program is free software; you can redistribute it and/or modify
@@ -462,8 +462,8 @@ GlassValueManager::replace_document(Xapian::docid did,
 	// before the subsequent add_document() can read them.
 	//
 	// The simplest way to handle this is to force the document to read its
-	// values, which we only need to do this is the docid matches.  Note
-	// that this check can give false positives as we don't also check the
+	// values, which we only need to do this is the docid matches.  Note that
+	// this check can give false positives as we don't also check the
 	// database, so for example replacing document 4 in one database with
 	// document 4 from another will unnecessarily trigger this, but forcing
 	// the values to be read is fairly harmless, and this is unlikely to be
@@ -545,6 +545,8 @@ void
 GlassValueManager::get_value_stats(Xapian::valueno slot, ValueStats & stats) const
 {
     LOGCALL_VOID(DB, "GlassValueManager::get_value_stats", slot | Literal("[stats]"));
+    // Invalidate the cache first in case an exception is thrown.
+    mru_slot = Xapian::BAD_VALUENO;
 
     string tag;
     if (postlist_table->get_exact_entry(make_valuestats_key(slot), tag)) {
@@ -568,6 +570,8 @@ GlassValueManager::get_value_stats(Xapian::valueno slot, ValueStats & stats) con
     } else {
 	stats.clear();
     }
+
+    mru_slot = slot;
 }
 
 void

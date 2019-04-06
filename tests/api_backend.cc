@@ -1,7 +1,7 @@
 /** @file api_backend.cc
  * @brief Backend-related tests.
  */
-/* Copyright (C) 2008,2009,2010,2011,2012,2013,2014,2015,2016,2018 Olly Betts
+/* Copyright (C) 2008,2009,2010,2011,2012,2013,2014,2015,2016 Olly Betts
  * Copyright (C) 2010 Richard Boulton
  *
  * This program is free software; you can redistribute it and/or
@@ -47,7 +47,6 @@
 #endif
 
 #include <fstream>
-#include <iterator>
 
 using namespace std;
 
@@ -319,11 +318,8 @@ DEFINE_TESTCASE(lockfilefd0or1, chert || glass) {
 
 /// Regression test for bug fixed in 1.2.13 and 1.3.1.
 DEFINE_TESTCASE(lockfilealreadyopen1, chert || glass) {
-    // Ensure database has been created.
-    (void)get_named_writable_database("lockfilealreadyopen1");
     string path = get_named_writable_database_path("lockfilealreadyopen1");
     int fd = ::open((path + "/flintlock").c_str(), O_RDONLY);
-    TEST(fd != -1);
     try {
 	Xapian::WritableDatabase db(path, Xapian::DB_CREATE_OR_OPEN);
 	TEST_EXCEPTION(Xapian::DatabaseLockError,
@@ -351,11 +347,7 @@ DEFINE_TESTCASE(testlock1, chert || glass) {
 	rdb = get_writable_database_as_database();
 	TEST(db.locked());
 	TEST(db_as_database.locked());
-	try {
-	    TEST(rdb.locked());
-	} catch (const Xapian::FeatureUnavailableError&) {
-	    SKIP_TEST("Database::locked() not supported on this platform");
-	}
+	TEST(rdb.locked());
 	db_as_database = rdb;
 	TEST(db.locked());
 	TEST(db_as_database.locked());
@@ -377,14 +369,6 @@ DEFINE_TESTCASE(testlock1, chert || glass) {
 	}
     }
     TEST(!rdb.locked());
-    return true;
-}
-
-/// Test that locked() returns false for backends which don't support update.
-/// Regression test for bug fixed in 1.4.6.
-DEFINE_TESTCASE(testlock2, backend && !writable && !multi) {
-    Xapian::Database db = get_database("apitest_simpledata");
-    TEST(!db.locked());
     return true;
 }
 
@@ -487,13 +471,11 @@ DEFINE_TESTCASE(replacedoc8, writable) {
 }
 
 /// Test coverage for DatabaseModifiedError.
-DEFINE_TESTCASE(databasemodified1, writable && !inmemory && !remote && !multi) {
+DEFINE_TESTCASE(databasemodified1, writable && !inmemory && !remote) {
     // The inmemory backend doesn't support revisions.
     //
     // The remote backend doesn't work as expected here, I think due to
     // test harness issues.
-    //
-    // With multi, DatabaseModifiedError doesn't trigger as easily.
     Xapian::WritableDatabase db(get_writable_database());
     Xapian::Document doc;
     doc.set_data("cargo");
@@ -588,7 +570,7 @@ DEFINE_TESTCASE(msize1, generated) {
     enq.set_collapse_key(0);
     enq.set_query(Xapian::Query("K1"));
 
-    Xapian::MSet mset = enq.get_mset(0, 60);
+    Xapian::MSet mset = enq.get_mset(0, 10, 1000);
     Xapian::doccount lb = mset.get_matches_lower_bound();
     Xapian::doccount ub = mset.get_matches_upper_bound();
     Xapian::doccount est = mset.get_matches_estimated();
@@ -603,7 +585,7 @@ DEFINE_TESTCASE(msize1, generated) {
     TEST_EQUAL(lb2, est2);
     TEST_EQUAL(est, est2);
 
-    Xapian::MSet mset3 = enq.get_mset(0, 10, 1000);
+    Xapian::MSet mset3 = enq.get_mset(0, 60);
     Xapian::doccount lb3 = mset3.get_matches_lower_bound();
     Xapian::doccount ub3 = mset3.get_matches_upper_bound();
     Xapian::doccount est3 = mset3.get_matches_estimated();
@@ -638,7 +620,7 @@ DEFINE_TESTCASE(msize2, generated) {
     enq.set_collapse_key(0);
     enq.set_query(Xapian::Query("K1"));
 
-    Xapian::MSet mset = enq.get_mset(0, 60);
+    Xapian::MSet mset = enq.get_mset(0, 10, 1000);
     Xapian::doccount lb = mset.get_matches_lower_bound();
     Xapian::doccount ub = mset.get_matches_upper_bound();
     Xapian::doccount est = mset.get_matches_estimated();
@@ -653,7 +635,7 @@ DEFINE_TESTCASE(msize2, generated) {
     TEST_EQUAL(lb2, est2);
     TEST_EQUAL(est, est2);
 
-    Xapian::MSet mset3 = enq.get_mset(0, 10, 1000);
+    Xapian::MSet mset3 = enq.get_mset(0, 60);
     Xapian::doccount lb3 = mset3.get_matches_lower_bound();
     Xapian::doccount ub3 = mset3.get_matches_upper_bound();
     Xapian::doccount est3 = mset3.get_matches_estimated();
@@ -875,7 +857,7 @@ DEFINE_TESTCASE(failedreplace2, chert || glass) {
 DEFINE_TESTCASE(phrase3, positional) {
     Xapian::Database db = get_database("apitest_phrase");
 
-    static const char * const phrase_words[] = { "phrase", "near" };
+    const char * phrase_words[] = { "phrase", "near" };
     Xapian::Query q(Xapian::Query::OP_NEAR, phrase_words, phrase_words + 2, 12);
     q = Xapian::Query(Xapian::Query::OP_AND_MAYBE, Xapian::Query("pad"), q);
 
@@ -1182,13 +1164,13 @@ make_phrasebug1_db(Xapian::WritableDatabase &db, const string &)
 /// Regression test for ticket#653, fixed in 1.3.2 and 1.2.19.
 DEFINE_TESTCASE(phrasebug1, generated && positional) {
     Xapian::Database db = get_database("phrasebug1", make_phrasebug1_db);
-    static const char * const qterms[] = { "katrina", "hurricane" };
+    const char * qterms[] = { "katrina", "hurricane" };
     Xapian::Enquire e(db);
     Xapian::Query q(Xapian::Query::OP_PHRASE, qterms, qterms + 2, 5);
     e.set_query(q);
     Xapian::MSet mset = e.get_mset(0, 100);
     TEST_EQUAL(mset.size(), 0);
-    static const char * const qterms2[] = { "hurricane", "katrina" };
+    const char * qterms2[] = { "hurricane", "katrina" };
     Xapian::Query q2(Xapian::Query::OP_PHRASE, qterms2, qterms2 + 2, 5);
     e.set_query(q2);
     mset = e.get_mset(0, 100);
@@ -1271,7 +1253,6 @@ DEFINE_TESTCASE(retrylock1, writable && !inmemory && !remote) {
     }
 
     if (result[0] == 'y') {
-retry:
 	struct timeval tv;
 	tv.tv_sec = 3;
 	tv.tv_usec = 0;
@@ -1283,18 +1264,12 @@ retry:
 	    // Timed out.
 	    result[0] = 'T';
 	    r = 1;
-	} else if (sr == -1) {
-	    if (errno == EINTR || errno == EAGAIN)
-		goto retry;
-	    tout << "select() failed with errno=" << errno << ": " << strerror(errno) << endl;
-	    result[0] = 'S';
-	    r = 1;
 	} else {
 	    r = read(fds[1], result, sizeof(result));
 	    if (r == -1) {
 		// Error.
-		tout << "read failed with errno=" << errno << ": " << strerror(errno) << endl;
-		result[0] = 'R';
+		tout << "errno=" << errno << ": " << strerror(errno) << endl;
+		result[0] = 'E';
 		r = 1;
 	    } else if (r == 0) {
 		// EOF.
@@ -1329,7 +1304,7 @@ DEFINE_TESTCASE(dbfilefd012, chert || glass) {
     try {
 	for (int j = 0; j < 3; ++j) {
 	    close(j);
-	    TEST_REL(lseek(j, 0, SEEK_CUR), <, 0);
+	    TEST_EQUAL(lseek(j, 0, SEEK_CUR), -1);
 	    TEST_EQUAL(errno, EBADF);
 	}
 
@@ -1482,9 +1457,7 @@ DEFINE_TESTCASE(exactxor1, backend) {
     Xapian::Database db = get_database("apitest_simpledata");
     Xapian::Enquire enq(db);
 
-    static const char * const words[4] = {
-	"blank", "test", "paragraph", "banana"
-    };
+    const char * words[4] = { "blank", "test", "paragraph", "banana" };
     Xapian::Query q(Xapian::Query::OP_XOR, words, words + 4);
     enq.set_query(q);
     enq.set_weighting_scheme(Xapian::BoolWeight());
@@ -1494,9 +1467,7 @@ DEFINE_TESTCASE(exactxor1, backend) {
     // Test improved lower bound in 1.3.7 (earlier versions gave 0).
     TEST_EQUAL(mset.get_matches_lower_bound(), 2);
 
-    static const char * const words2[4] = {
-	"queri", "test", "paragraph", "word"
-    };
+    const char * words2[4] = { "queri", "test", "paragraph", "word" };
     Xapian::Query q2(Xapian::Query::OP_XOR, words2, words2 + 4);
     enq.set_query(q2);
     enq.set_weighting_scheme(Xapian::BoolWeight());
@@ -1563,74 +1534,14 @@ gen_uniqterms_gt_doclen_db(Xapian::WritableDatabase& db, const string&)
     doc.add_term("foo");
     doc.add_boolean_term("bar");
     db.add_document(doc);
-    Xapian::Document doc2;
-    doc2.add_posting("foo", 0, 2);
-    doc2.add_term("foo2");
-    doc2.add_boolean_term("baz");
-    doc2.add_boolean_term("baz2");
-    db.add_document(doc2);
 }
 
 DEFINE_TESTCASE(getuniqueterms1, generated) {
     Xapian::Database db =
 	get_database("uniqterms_gt_doclen", gen_uniqterms_gt_doclen_db);
 
-    auto unique1 = db.get_unique_terms(1);
-    TEST_REL(unique1, <=, db.get_doclength(1));
-    TEST_REL(unique1, <, db.get_document(1).termlist_count());
-    // Ideally it'd be equal to 1, and in this case it is, but the current
-    // backends can't always efficiently ensure an exact answer.
-    TEST_REL(unique1, >=, 1);
-
-    auto unique2 = db.get_unique_terms(2);
-    TEST_REL(unique2, <=, db.get_doclength(2));
-    TEST_REL(unique2, <, db.get_document(2).termlist_count());
-    // Ideally it'd be equal to 2, but the current backends can't always
-    // efficiently ensure an exact answer and here it is actually 3.
-    TEST_REL(unique2, >=, 2);
-
-    return true;
-}
-
-/** Regression test for bug fixed in 1.4.6.
- *
- *  OP_NEAR would think a term without positional information occurred at
- *  position 1 if it had the lowest term frequency amongst the OP_NEAR's
- *  subqueries.
- */
-DEFINE_TESTCASE(nopositionbug1, generated) {
-    Xapian::Database db =
-	get_database("uniqterms_gt_doclen", gen_uniqterms_gt_doclen_db);
-
-    // Test both orders.
-    static const char* const terms1[] = { "foo", "baz" };
-    static const char* const terms2[] = { "baz", "foo" };
-
-    Xapian::Enquire enq(db);
-    enq.set_query(Xapian::Query(Xapian::Query::OP_NEAR,
-				begin(terms1), end(terms1), 10));
-    TEST_EQUAL(enq.get_mset(0, 5).size(), 0);
-
-    enq.set_query(Xapian::Query(Xapian::Query::OP_NEAR,
-				begin(terms2), end(terms2), 10));
-    TEST_EQUAL(enq.get_mset(0, 5).size(), 0);
-
-    enq.set_query(Xapian::Query(Xapian::Query::OP_PHRASE,
-				begin(terms1), end(terms1), 10));
-    TEST_EQUAL(enq.get_mset(0, 5).size(), 0);
-
-    enq.set_query(Xapian::Query(Xapian::Query::OP_PHRASE,
-				begin(terms2), end(terms2), 10));
-    TEST_EQUAL(enq.get_mset(0, 5).size(), 0);
-
-    // Exercise exact phrase case too.
-    enq.set_query(Xapian::Query(Xapian::Query::OP_PHRASE,
-				begin(terms1), end(terms1), 2));
-    TEST_EQUAL(enq.get_mset(0, 5).size(), 0);
-
-    enq.set_query(Xapian::Query(Xapian::Query::OP_PHRASE,
-				begin(terms2), end(terms2), 2));
-    TEST_EQUAL(enq.get_mset(0, 5).size(), 0);
+    TEST_REL(db.get_unique_terms(1), <=, db.get_doclength(1));
+    TEST_REL(db.get_unique_terms(1), <, db.get_document(1).termlist_count());
 
     return true;
 }
@@ -1650,39 +1561,5 @@ DEFINE_TESTCASE(estimaterounding1, backend) {
     tout << mset.get_description() << endl;
     // Bounds are 111-138, raw estimate is 133.
     TEST_EQUAL(mset.get_matches_estimated() % 10, 0);
-    return true;
-}
-
-/** Regression test for bug with get_mset(0, 0, N) (N > 0).
- *
- *  Fixed in 1.5.0 and 1.4.6.
- */
-DEFINE_TESTCASE(checkatleast4, backend) {
-    Xapian::Database db = get_database("apitest_simpledata");
-    Xapian::Enquire enq(db);
-    enq.set_query(Xapian::Query("paragraph"));
-    // This used to cause access to an element in an empty vector.
-    Xapian::MSet mset = enq.get_mset(0, 0, 4);
-    TEST_EQUAL(mset.size(), 0);
-    return true;
-}
-
-/// Regression test for glass bug fixed in 1.4.6 and 1.5.0.
-DEFINE_TESTCASE(nodocs1, transactions && !remote) {
-    {
-	Xapian::WritableDatabase db = get_named_writable_database("nodocs1");
-	db.set_metadata("foo", "bar");
-	db.commit();
-	Xapian::Document doc;
-	doc.add_term("baz");
-	db.add_document(doc);
-	db.commit();
-    }
-
-    size_t check_errors =
-	Xapian::Database::check(get_named_writable_database_path("nodocs1"),
-				Xapian::DBCHECK_SHOW_STATS, &tout);
-    TEST_EQUAL(check_errors, 0);
-
     return true;
 }

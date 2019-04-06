@@ -92,9 +92,9 @@ class GlassPostListTable : public GlassTable {
 	void merge_doclen_changes(const map<Xapian::docid, Xapian::termcount> & doclens);
 
 	Xapian::docid get_chunk(const string &tname,
-				Xapian::docid did, bool adding,
-				Glass::PostlistChunkReader ** from,
-				Glass::PostlistChunkWriter **to);
+		Xapian::docid did, bool adding,
+		Glass::PostlistChunkReader ** from,
+		Glass::PostlistChunkWriter **to);
 
 	/// Compose a key from a termname and docid.
 	static string make_key(const string & term, Xapian::docid did) {
@@ -117,14 +117,10 @@ class GlassPostListTable : public GlassTable {
 	 *			term (or NULL not to return)
 	 *  @param collfreq_ptr	Point to return number of occurrences of @a
 	 *			term in the database (or NULL not to return)
-	 *  @param wdfub_ptr	Point to return an upper bound on the wdf
-	 *			of @a term in the database (or NULL not to
-	 *			return)
 	 */
 	void get_freqs(const std::string & term,
 		       Xapian::doccount * termfreq_ptr,
-		       Xapian::termcount * collfreq_ptr,
-		       Xapian::termcount * wdfub_ptr = NULL) const;
+		       Xapian::termcount * collfreq_ptr) const;
 
 	/** Returns the length of document @a did. */
 	Xapian::termcount get_doclength(Xapian::docid did,
