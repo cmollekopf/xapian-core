@@ -3733,11 +3733,11 @@ coverage-check:
 install-exec-local: xapian-config
 	$(MKDIR_P) "$(DESTDIR)$(bindir)"
 	$(SED) '/##UNINSTONLYBEGIN/,/##UNINSTONLYEND/d' xapian-config > tmp.xc
-	$(INSTALL_SCRIPT) tmp.xc "$(DESTDIR)$(bindir)$$dir/`echo xapian-config|$(SED) -e '$(transform)'`"
+	$(INSTALL_SCRIPT) tmp.xc "$(DESTDIR)$(bindir)/xapian-config"
 	rm -f tmp.xc
 
 uninstall-local:
-	rm -f "$(DESTDIR)$(bindir)$$dir/xapian-config"
+	rm -f "$(DESTDIR)$(bindir)/xapian-config"
 docsource.mk: preautoreconf
 	cd $(top_srcdir) && ./preautoreconf
 

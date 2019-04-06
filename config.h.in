@@ -370,6 +370,7 @@
 /* Disable stupid MSVC "performance" warning for converting int to bool. */
 #ifdef _MSC_VER
 # pragma warning(disable:4800)
+# pragma warning(disable:4003)
 #endif
 
 /* _FORTIFY_SOURCE is only supported by GCC >= 4.1 and glibc >= 2.3.4, but it
@@ -415,3 +416,6 @@
 # define __MATHERR_RENAME_EXCEPTION
 #endif
 
+#if !defined __WIN32__ && defined _WIN32 
+# define __WIN32__
+#endif

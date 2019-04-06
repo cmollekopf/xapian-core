@@ -23,6 +23,7 @@
 #define XAPIAN_INCLUDED_IO_UTILS_H
 
 #include <sys/types.h>
+#include "config.h"
 #include "safefcntl.h"
 #include "safeunistd.h"
 #include <string>

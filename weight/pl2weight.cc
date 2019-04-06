@@ -27,6 +27,7 @@
 #include "serialise-double.h"
 
 #include "xapian/error.h"
+#include <algorithm>
 
 using namespace std;
 

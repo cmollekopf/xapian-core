@@ -34,6 +34,7 @@
 // We also need to do some renaming of functions to get versions which
 // work on large files.
 # include <io.h>
+# include <direct.h>
 
 # ifdef lseek
 #  undef lseek

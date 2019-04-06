@@ -1283,7 +1283,11 @@ AH_BOTTOM(
 [/* Disable stupid MSVC "performance" warning for converting int to bool. */
 #ifdef _MSC_VER
 # pragma warning(disable:4800)
+# pragma warning(disable:4003)
+# define NOMINMAX
+# define _USE_MATH_DEFINES
 #endif
+
 
 /* _FORTIFY_SOURCE is only supported by GCC >= 4.1 and glibc >= 2.3.4, but it
  * shouldn't cause a problem to define it where it's not supported and some
@@ -1326,6 +1330,10 @@ AH_BOTTOM(
  */
 #ifdef __SUNPRO_CC
 # define __MATHERR_RENAME_EXCEPTION
+#endif
+
+#if !defined __WIN32__ && defined _WIN32 
+# define __WIN32__
 #endif
 ])
 

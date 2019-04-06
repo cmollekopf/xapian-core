@@ -64,7 +64,7 @@
 # define XAPIAN_PURE_FUNCTION
 
 # ifdef _MSC_VER
-#  define XAPIAN_NOTHROW(D) __declspec(nothrow) D XAPIAN_NOEXCEPT
+#  define XAPIAN_NOTHROW(D)  D XAPIAN_NOEXCEPT
 # endif
 #endif
 
